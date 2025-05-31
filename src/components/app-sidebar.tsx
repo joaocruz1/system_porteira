@@ -76,7 +76,7 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t p-4">
         <div className="text-xs text-muted-foreground">
-          <p>© 2024 Porteira de Minas</p>
+          <p>© 2025 MetalLaser</p>
           <p>Versão 1.0.0</p>
         </div>
       </SidebarFooter>
