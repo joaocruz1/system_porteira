@@ -152,6 +152,8 @@ export function EstoqueProvider({ children }: { children: ReactNode }) {
       })
       if (!response.ok) {
         throw new Error(`Erro ao adicionar produto: ${response.statusText}`)
+      }else{
+        toast("Produto Adicionado com Sucesso!")
       }
       refreshData()
     } catch (err) {
@@ -187,6 +189,8 @@ const removerProduto = async (id: string): Promise<void> => {
         console.warn("Não foi possível parsear a resposta de erro como JSON.", e);
       }
       throw new Error(`Erro ao remover produto: ${errorMessage}`);
+    }else{
+      toast("Produto Removido com Sucesso!")
     }
 
     console.log('Produto removido com sucesso (via proxy Next.js)');
@@ -215,9 +219,6 @@ const atualizarQuantidade = async (id: string, quantidade: number) => {
       },
       body: JSON.stringify({ "quantidade": quantidade }), // Envia o corpo com a nova quantidade
     });
-
-    console.log(`[FRONTEND] Resposta da API Next.js (PUT): Status ${response.status}`)
-
     if (!response.ok) {
       toast("Ocorreu um erro para atualizar a quantidade!")
       let errorMessage = `Erro HTTP: ${response.status} ${response.statusText}`
