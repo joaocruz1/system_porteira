@@ -3,6 +3,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { toast } from "sonner"
 
 export interface Produto {
   id: string
@@ -51,7 +52,7 @@ export function EstoqueProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-
+  const API_BASE_URL_PRODUCT2 = '/api'; // <--- VERIFIQUE E AJUSTE ISTO!
   const API_BASE_URL_PRODUCT: string = process.env.NEXT_PUBLIC_API_PRODUCTS_URL!;
 
   const fetchData = async () => {
@@ -159,40 +160,90 @@ export function EstoqueProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const removerProduto = async (id: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL_PRODUCT}/deleteproduto/${id}`, { // Adapte para /produtos/{id}
-        method: "DELETE",
-      })
-      if (!response.ok) {
-        throw new Error(`Erro ao remover produto: ${response.statusText}`)
+const removerProduto = async (id: string): Promise<void> => {
+  try {
+    // A URL FINAL DEVE SER ALGO COMO '/api/produto/delete/SEU_ID'
+    const apiUrl = `${API_BASE_URL_PRODUCT2}/produto/delete/${id}`;
+    console.log(`Chamando API Next.js em: ${apiUrl}`); // Verifique este log no console
+
+    const response = await fetch(apiUrl, { // <--- ESTA CHAMADA DEVE USAR apiUrl
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json"
       }
-      refreshData()
-    } catch (err) {
-      console.error("Erro ao remover produto:", err)
-      setError((err as Error).message || "Erro desconhecido ao remover produto.")
+    });
+
+    // ... (resto do tratamento de response e erro) ...
+
+    if (!response.ok) {
+      let errorMessage = `Erro HTTP: ${response.status} ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+        if (errorData.details) {
+          errorMessage += ` - ${errorData.details}`;
+        }
+      } catch (e) {
+        console.warn("Não foi possível parsear a resposta de erro como JSON.", e);
+      }
+      throw new Error(`Erro ao remover produto: ${errorMessage}`);
+    }
+
+    console.log('Produto removido com sucesso (via proxy Next.js)');
+    refreshData();
+
+  } catch (err: unknown) {
+    console.error("Erro na função removerProduto:", err);
+    if (err instanceof Error) {
+      setError(err.message || "Erro desconhecido ao remover produto.");
+    } else {
+      setError("Ocorreu um erro desconhecido ao remover o produto.");
     }
   }
+}
 
-  const atualizarQuantidade = async (id: string, quantidade: number) => {
-    try {
-      const response = await fetch(`${API_BASE_URL_PRODUCT}/produtos/${id}`, { // Adapte para /produtos/{id}
-        method: "POST",
-        headers: {
-          "access_token": "28230105nunu",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ "quantidade": quantidade }),
-      })
-      console.log(id)
-      if (!response.ok) {
-        throw new Error(`Erro ao atualizar quantidade: ${response.statusText}`)
+const atualizarQuantidade = async (id: string, quantidade: number) => {
+  try {
+
+    const apiUrl = `${API_BASE_URL_PRODUCT2}/produto/put/${id}`; 
+    console.log(`[FRONTEND] Chamando API Next.js (PUT) em: ${apiUrl} com quantidade: ${quantidade}`);
+
+    const response = await fetch(apiUrl, {
+      method: "PUT", 
+      headers: {
+        "Content-Type": "application/json", 
+      },
+      body: JSON.stringify({ "quantidade": quantidade }), // Envia o corpo com a nova quantidade
+    });
+
+    console.log(`[FRONTEND] Resposta da API Next.js (PUT): Status ${response.status}`)
+
+    if (!response.ok) {
+      toast("Ocorreu um erro para atualizar a quantidade!")
+      let errorMessage = `Erro HTTP: ${response.status} ${response.statusText}`
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage
+        if (errorData.details) {
+          errorMessage += ` - ${errorData.details}`
+        }
+      } catch (e) {
+        // Falhou ao parsear JSON
       }
-      refreshData()
-    } catch (err) {
-      console.error("Erro ao atualizar quantidade:", err)
-      setError((err as Error).message || "Erro desconhecido ao atualizar quantidade.")
+      throw new Error(`Erro ao atualizar quantidade: ${errorMessage}`)
+    }else{
+      toast("Quantidade atualizada com Sucesso!")
     }
+
+    refreshData(); 
+  } catch (err: unknown) { // Use unknown para o erro
+    console.error("Erro na função atualizarQuantidade:", err)
+    if (err instanceof Error) {
+      setError(err.message || "Erro desconhecido ao atualizar quantidade.")
+    } else {
+      setError("Ocorreu um erro desconhecido ao atualizar a quantidade.")
+    }
+  }
   }
 
   const atualizarProdutoExistente = async (id: string, novaQuantidade: number) => {
