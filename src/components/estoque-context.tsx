@@ -161,7 +161,7 @@ export function EstoqueProvider({ children }: { children: ReactNode }) {
 
   const removerProduto = async (id: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL_PRODUCT}/${id}`, { // Adapte para /produtos/{id}
+      const response = await fetch(`${API_BASE_URL_PRODUCT}/deleteproduto/${id}`, { // Adapte para /produtos/{id}
         method: "DELETE",
       })
       if (!response.ok) {
@@ -177,12 +177,12 @@ export function EstoqueProvider({ children }: { children: ReactNode }) {
   const atualizarQuantidade = async (id: string, quantidade: number) => {
     try {
       const response = await fetch(`${API_BASE_URL_PRODUCT}/produtos/${id}`, { // Adapte para /produtos/{id}
-        method: "PUT",
+        method: "POST",
         headers: {
           "access_token": "28230105nunu",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ quantidade }),
+        body: JSON.stringify({ "quantidade": quantidade }),
       })
       console.log(id)
       if (!response.ok) {
