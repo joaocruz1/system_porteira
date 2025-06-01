@@ -8,10 +8,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart3, TrendingUp, TrendingDown, Package, ShoppingCart, DollarSign, Download } from "lucide-react"
 import { useEstoque } from "@/components/estoque-context"
 import { useState } from "react"
+import { useAuth } from "@/components/auth-context"
 
 export function Relatorios() {
+  const { permissions } = useAuth()
   const { produtos, pedidos } = useEstoque()
   const [periodoSelecionado, setPeriodoSelecionado] = useState("mes")
+
+  if (!permissions.canViewReports) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold">Acesso Negado</h3>
+          <p className="text-muted-foreground">Você não tem permissão para visualizar relatórios.</p>
+        </div>
+      </div>
+    )
+  }
 
   // Cálculos para relatórios
   const totalProdutos = produtos.length
@@ -371,7 +384,7 @@ export function Relatorios() {
                       <TableCell>{new Date(mov.data).toLocaleDateString("pt-BR")}</TableCell>
                       <TableCell className="font-medium">{mov.produto}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">
+                        <Badge variant="secondary"> {/* Ou a variante que fizer sentido para "saída" */}
                           <TrendingDown className="mr-1 h-3 w-3" />
                           Saída
                         </Badge>

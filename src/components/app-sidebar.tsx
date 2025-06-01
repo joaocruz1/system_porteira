@@ -1,6 +1,6 @@
 "use client"
 
-import { BarChart3, Package, ShoppingCart, Home } from "lucide-react"
+import { BarChart3, Package, ShoppingCart, Home, Calculator } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -14,6 +14,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar"
 import { useNavigation } from "@/components/navigation-context"
+import { useAuth } from "@/components/auth-context"
 
 const menuItems = [
   {
@@ -36,10 +37,37 @@ const menuItems = [
     icon: BarChart3,
     component: "relatorios",
   },
+  {
+    title: "Orçamento Cliente",
+    icon: Calculator,
+    component: "orcamento-cliente",
+  },
 ]
 
 export function AppSidebar() {
   const { activeComponent, setActiveComponent } = useNavigation()
+  const { permissions } = useAuth()
+
+  const getFilteredMenuItems = () => {
+    return menuItems.filter((item) => {
+      switch (item.component) {
+        case "dashboard":
+          return permissions.canViewDashboard
+        case "estoque":
+          return permissions.canManageStock
+        case "vendas":
+          return permissions.canManageSales
+        case "relatorios":
+          return permissions.canViewReports
+        case "orcamento-cliente":
+          return permissions.canCreateQuotes
+        default:
+          return true
+      }
+    })
+  }
+
+  const filteredMenuItems = getFilteredMenuItems()
 
   return (
     <Sidebar>
@@ -58,7 +86,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {filteredMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     onClick={() => setActiveComponent(item.component)}
@@ -76,7 +104,7 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t p-4">
         <div className="text-xs text-muted-foreground">
-          <p>© 2025 MetalLaser</p>
+          <p>© 2024 Porteira de Minas</p>
           <p>Versão 1.0.0</p>
         </div>
       </SidebarFooter>

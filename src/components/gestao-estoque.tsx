@@ -22,8 +22,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Pencil, Trash2, Package, Search, AlertTriangle } from "lucide-react"
 import { useEstoque, type Produto } from "@/components/estoque-context"
+import { useAuth } from "@/components/auth-context"
 
 export function GestaoEstoque() {
+  const { permissions } = useAuth()
   const { produtos, adicionarProduto, removerProduto, atualizarQuantidade, atualizarProdutoExistente } = useEstoque()
   const [dialogAberto, setDialogAberto] = useState(false)
   const [produtoEditando, setProdutoEditando] = useState<Produto | null>(null)
@@ -41,8 +43,6 @@ export function GestaoEstoque() {
     dataEntrada: new Date().toISOString().split("T")[0],
   })
 
-  const categorias = ["todas", ...Array.from(new Set(produtos.map((p) => p.categoria)))]
-
   const produtosFiltrados = produtos.filter((produto) => {
     const matchCategoria = filtroCategoria === "todas" || produto.categoria === filtroCategoria
     const matchBusca =
@@ -53,6 +53,19 @@ export function GestaoEstoque() {
 
   const produtosBaixoEstoque = produtos.filter((p) => p.quantidade < 20)
   const produtosSemEstoque = produtos.filter((p) => p.quantidade === 0)
+
+  if (!permissions.canManageStock) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold">Acesso Negado</h3>
+          <p className="text-muted-foreground">Você não tem permissão para gerenciar o estoque.</p>
+        </div>
+      </div>
+    )
+  }
+
+  const categorias = ["todas", ...Array.from(new Set(produtos.map((p) => p.categoria)))]
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -432,7 +445,7 @@ export function GestaoEstoque() {
                           R$ {(produto.quantidade * produto.preco).toFixed(2)}
                         </TableCell>
                         <TableCell>{produto.fornecedor}</TableCell>
-                        <TableCell>{new Date(produto.dataEntrada).toLocaleDateString("pt-BR")}</TableCell>
+                        <TableCell>{produto.dataEntrada}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="outline" size="sm" onClick={() => abrirEdicao(produto)}>

@@ -2,7 +2,7 @@
 
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import { toast } from "sonner"
 
 export interface Produto {
@@ -46,7 +46,12 @@ interface EstoqueContextType {
 
 const EstoqueContext = createContext<EstoqueContextType | undefined>(undefined)
 
-export function EstoqueProvider({ children }: { children: ReactNode }) {
+interface EstoqueProviderProps {
+  children: ReactNode;
+  initialProdutos?: Produto[]; // Prop para produtos iniciais
+}
+
+export function EstoqueProvider({ children,initialProdutos }: EstoqueProviderProps) {
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [pedidos, setPedidos] = useState<Pedido[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -55,68 +60,65 @@ export function EstoqueProvider({ children }: { children: ReactNode }) {
   const API_BASE_URL_PRODUCT2 = '/api'; // <--- VERIFIQUE E AJUSTE ISTO!
   const API_BASE_URL_PRODUCT: string = process.env.NEXT_PUBLIC_API_PRODUCTS_URL!;
 
-  const fetchData = async () => {
-    setIsLoading(true)
-    setError(null)
+  const fetchData = useCallback(async (isInitialContextLoad = false) => {
+    // Se estamos carregando no contexto inicial E initialProdutos foram fornecidos E não estão vazios,
+    // então usamos esses dados e não buscamos novamente.
+    if (isInitialContextLoad && initialProdutos && initialProdutos.length > 0) {
+      console.log("CTX: Usando initialProdutos do servidor.");
+      setProdutos(initialProdutos); // Garante que o estado reflita os props iniciais
+      setIsLoading(false);
+      return;
+    }
+
+    console.log("CTX: Buscando dados da API...");
+    setIsLoading(true);
+    setError(null);
     try {
-
       if (!API_BASE_URL_PRODUCT) {
-        throw new Error("URL da API de Produtos não configurada. Verifique seu arquivo .env.local e reinicie o servidor.");
+        throw new Error("URL da API de Produtos não configurada.");
       }
-
-
-      const response = await fetch(`${API_BASE_URL_PRODUCT}/produtos`); // Agora o TypeScript está satisfeito aqui
-
+      const response = await fetch(`${API_BASE_URL_PRODUCT}/produtos`);
       if (!response.ok) {
         throw new Error(`Erro ao buscar dados: ${response.statusText}`);
       }
-
       const rawResponse = await response.json();
-      console.log("Resposta bruta do n8n:", rawResponse);
-
       if (typeof rawResponse.output !== 'string') {
         throw new Error("Formato de resposta inesperado: 'output' não é uma string.");
       }
-
       let finalProdutosData: Produto[];
       try {
-        finalProdutosData = JSON.parse(rawResponse.output); 
+        finalProdutosData = JSON.parse(rawResponse.output);
       } catch (parseError) {
-        console.error("Erro ao fazer parse da string de produtos:", parseError);
         throw new Error("Formato de string de produtos inválido na resposta.");
       }
-      
-      if (!Array.isArray(finalProdutosData) || !finalProdutosData.every(item => typeof item === 'object' && 'id' in item)) {
+      if (!Array.isArray(finalProdutosData) || !finalProdutosData.every(item => typeof item === 'object' && item && 'id' in item)) {
         throw new Error("Dados de produtos não estão no formato de array de objetos Produto.");
       }
-
       setProdutos(finalProdutosData);
-      console.log("Produtos carregados com sucesso:", finalProdutosData);
-
-
-     
-      setPedidos([]); 
-
+      console.log("CTX: Produtos carregados com sucesso pela API:", finalProdutosData.length);
     } catch (err) {
-      console.error("Erro ao buscar dados:", err)
-      setError((err as Error).message || "Erro desconhecido ao buscar dados.")
-      setProdutos([]); // Garante que produtos seja um array vazio em caso de erro
-      setPedidos([]); // Garante que pedidos seja um array vazio em caso de erro
+      console.error("CTX: Erro ao buscar dados:", err);
+      setError((err as Error).message || "Erro desconhecido ao buscar dados.");
+      setProdutos(initialProdutos || []); // Volta para o inicial ou vazio em caso de erro
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  }, [API_BASE_URL_PRODUCT, initialProdutos]); // initialProdutos é uma dependência
+
 
   useEffect(() => {
-    // Apenas chame fetchData se API_PRODUCTS_URL for definida
-    // A asserção '!' já indica isso para o TypeScript, mas um check explícito pode ser útil para depuração
-    if (API_BASE_URL_PRODUCT) {
-      fetchData();
+    // Se não recebemos produtos iniciais do servidor, ou se eles estavam vazios,
+    // então o cliente deve tentar buscar.
+    if (!initialProdutos || initialProdutos.length === 0) {
+      console.log("CTX useEffect: initialProdutos não fornecidos ou vazios, chamando fetchData(true).");
+      fetchData(true); // true indica que é o carregamento inicial do contexto
     } else {
-        setIsLoading(false);
-        setError("URLs de API não definidas. Verifique .env.local");
+      // Se initialProdutos foram fornecidos, o estado já foi inicializado com eles.
+      // Apenas garantimos que isLoading seja false.
+      console.log("CTX useEffect: initialProdutos fornecidos, definindo isLoading para false.");
+      setIsLoading(false);
     }
-  }, [API_BASE_URL_PRODUCT]) // Dependência para re-executar se a URL mudar (improvável para .env)
+  }, [fetchData, initialProdutos]); // Adicionado initialProdutos como dependência
 
   const refreshData = () => {
     fetchData()
