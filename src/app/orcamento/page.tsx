@@ -37,6 +37,7 @@ import { METALASER_CATALOG, CATEGORIES, type CatalogItem } from "@/lib/metal-cat
 import Image from "next/image"
 // Adicionar import do novo componente no topo do arquivo
 import { CustomProductForm } from "@/components/custom-product-form"
+import { json } from "stream/consumers"
 
 interface CustomQuoteItem {
   id: string
@@ -66,24 +67,26 @@ interface QuoteItem {
   totalPrice: number
 }
 
+// Atualizar a interface CustomerData para incluir endereço e remover message
 interface CustomerData {
   name: string
   email: string
   phone: string
   company: string
-  message: string
+  address: string
 }
 
 export default function PublicQuotePage() {
   const [selectedCategory, setSelectedCategory] = useState("Todos")
   const [searchTerm, setSearchTerm] = useState("")
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([])
+  // Atualizar o estado inicial de customerData para incluir endereço e remover message
   const [customerData, setCustomerData] = useState<CustomerData>({
     name: "",
     email: "",
     phone: "",
     company: "",
-    message: "",
+    address: "",
   })
   const [selectedProduct, setSelectedProduct] = useState<CatalogItem | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -130,7 +133,6 @@ export default function PublicQuotePage() {
     setSelectedProduct(null)
   }
 
-  // Adicionar função para adicionar produto personalizado após a função addToQuote
   const addCustomToQuote = (customItem: CustomQuoteItem) => {
     const setupFee = 50.0 // Taxa padrão para produtos personalizados
     const unitPrice = customItem.estimatedPrice
@@ -155,7 +157,6 @@ export default function PublicQuotePage() {
     setQuoteItems(quoteItems.filter((_, i) => i !== index))
   }
 
-  // Atualizar a função updateQuantity para lidar com produtos personalizados
   const updateQuantity = (index: number, newQuantity: number) => {
     if (newQuantity < 1) return
     const updatedItems = [...quoteItems]
@@ -195,24 +196,67 @@ export default function PublicQuotePage() {
     return { subtotal, setupFees, total }
   }
 
-  const sendQuote = () => {
+  const sendQuote = async() => {
     if (!customerData.name || !customerData.email || !customerData.phone || quoteItems.length === 0) {
       alert("Por favor, preencha seus dados e adicione pelo menos um item ao orçamento.")
       return
     }
 
+    console.log(customerData)
+    console.log(quoteItems)
+
+    const response = await fetch("/api/send-client", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        customerData
+      }),
+    })
+
+    const response2 = await fetch("/api/send-quote", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        quoteItems
+      }),
+    })
+    
+
+    if (!response.ok || !response2.ok) {
+      alert("Ocorreu um erro ao enviar o orçamento. Por favor, tente novamente mais tarde.")
+      return
+    }else{
+      alert("Orcamento Enviado com sucesso")
+    }
+
+
+
     // Simular envio do orçamento
     alert("Orçamento enviado com sucesso! Entraremos em contato em breve.")
 
     // Reset form
-    setQuoteItems([])
+    // Atualizar o reset do formulário após envio para incluir endereço e remover message
     setCustomerData({
       name: "",
       email: "",
       phone: "",
       company: "",
-      message: "",
+      address: "",
     })
+  }
+
+  const scrollToCustomerData = () => {
+    const customerDataElement = document.getElementById("customer-data-section")
+    if (customerDataElement) {
+      customerDataElement.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      })
+    }
   }
 
   const getCategoryIcon = (category: string) => {
@@ -326,7 +370,6 @@ export default function PublicQuotePage() {
                   </Select>
                 </div>
               </CardContent>
-              {/* Adicionar botão para orçamento personalizado após o CardContent dos filtros e antes do grid de produtos */}
               <div className="flex items-center justify-between px-4 pb-4">
                 <p className="text-sm text-gray-600">{filteredProducts.length} produtos encontrados</p>
                 <Button
@@ -351,7 +394,6 @@ export default function PublicQuotePage() {
                   >
                     <CardContent className="p-0">
                       <div className="space-y-4">
-                        {/* Imagem do Produto */}
                         <div className="relative overflow-hidden rounded-t-lg bg-gray-100">
                           <Image
                             src={`/placeholder.svg?height=${imageDimensions.height}&width=${imageDimensions.width}`}
@@ -378,7 +420,6 @@ export default function PublicQuotePage() {
                             </Badge>
                           </div>
 
-                          {/* Especificações Técnicas */}
                           <div className="space-y-2">
                             {(product.capacity || product.dimensions) && (
                               <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded border">
@@ -413,7 +454,6 @@ export default function PublicQuotePage() {
 
                           <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
 
-                          {/* Preços */}
                           <div className="bg-blue-50 p-3 rounded border border-blue-200">
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-sm font-medium text-gray-700">Preço unitário:</span>
@@ -467,7 +507,7 @@ export default function PublicQuotePage() {
           {/* Sidebar - Orçamento */}
           <div className="space-y-6">
             {/* Resumo do Orçamento */}
-            <Card className="shadow-sm sticky top-4">
+            <Card className="shadow-sm">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-gray-900">
                   <Calculator className="h-5 w-5 text-blue-600" />
@@ -484,7 +524,6 @@ export default function PublicQuotePage() {
                   <div className="space-y-4">
                     {/* Lista de Itens */}
                     <div className="space-y-3 max-h-64 overflow-y-auto">
-                      {/* Atualizar a renderização dos itens no carrinho para mostrar produtos personalizados */}
                       {quoteItems.map((item, index) => (
                         <div key={index} className="border rounded-lg p-3 bg-gray-50">
                           <div className="flex items-start justify-between mb-2">
@@ -517,7 +556,7 @@ export default function PublicQuotePage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => updateQuantity(index, item.quantity - 1)}
-                                disabled={item.quantity <= 1}
+                                disabled={item.quantity <= (item.product?.minimumOrder || 1)}
                                 className="h-6 w-6 p-0"
                               >
                                 <Minus className="h-3 w-3" />
@@ -589,6 +628,26 @@ export default function PublicQuotePage() {
                         </div>
                       </div>
                     </div>
+                    {quoteItems.length > 0 && !customerData.name && (
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-4 md:hidden">
+                        <div className="flex items-center gap-2">
+                          <Info className="h-4 w-4 text-orange-600" />
+                          <div className="text-sm text-orange-800">
+                            <p className="font-medium">Próximo passo:</p>
+                            <p>Preencha seus dados para solicitar o orçamento</p>
+                          </div>
+                        </div>
+                        <Button
+                          onClick={scrollToCustomerData}
+                          variant="outline"
+                          size="sm"
+                          className="w-full mt-2 border-orange-300 text-orange-700 hover:bg-orange-100"
+                        >
+                          <Send className="h-3 w-3 mr-2" />
+                          Ir para dados do cliente
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -596,7 +655,7 @@ export default function PublicQuotePage() {
 
             {/* Dados do Cliente */}
             {quoteItems.length > 0 && (
-              <Card className="shadow-sm">
+              <Card id="customer-data-section" className="shadow-sm">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-gray-900">Seus Dados</CardTitle>
                   <CardDescription>Para enviarmos o orçamento detalhado</CardDescription>
@@ -651,15 +710,16 @@ export default function PublicQuotePage() {
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
+                  {/* Substituir o campo de observações pelo campo de endereço na seção "Seus Dados" */}
                   <div>
-                    <Label htmlFor="message" className="text-gray-700 font-medium">
-                      Observações
+                    <Label htmlFor="address" className="text-gray-700 font-medium">
+                      Endereço *
                     </Label>
                     <Textarea
-                      id="message"
-                      value={customerData.message}
-                      onChange={(e) => setCustomerData({ ...customerData, message: e.target.value || "" })}
-                      placeholder="Informações adicionais sobre seu pedido..."
+                      id="address"
+                      value={customerData.address}
+                      onChange={(e) => setCustomerData({ ...customerData, address: e.target.value || "" })}
+                      placeholder="Rua, número, bairro, cidade, estado e CEP"
                       rows={3}
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
@@ -727,6 +787,22 @@ export default function PublicQuotePage() {
           </div>
         </div>
       </div>
+
+      {/* Botão flutuante para mobile - levar aos dados do cliente */}
+      {quoteItems.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-50 md:hidden">
+          <Button
+            onClick={scrollToCustomerData}
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg rounded-full h-14 w-14 p-0"
+            size="lg"
+          >
+            <div className="flex flex-col items-center">
+              <Send className="h-5 w-5" />
+              <span className="text-xs mt-1">Dados</span>
+            </div>
+          </Button>
+        </div>
+      )}
 
       {/* Dialog para Adicionar Produto */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -831,6 +907,11 @@ function ProductCustomizationForm({
             onChange={handleQuantityChange}
             className="w-20 text-center border-gray-300 focus:border-blue-500"
             min={product.minimumOrder}
+            onBlur={() => {
+              if (quantity < product.minimumOrder) {
+                setQuantity(product.minimumOrder)
+              }
+            }}
           />
           <Button variant="outline" size="sm" onClick={() => setQuantity(quantity + 1)} className="h-8 w-8 p-0">
             <Plus className="h-3 w-3" />

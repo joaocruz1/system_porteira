@@ -15,6 +15,7 @@ export interface Produto {
   dataEntrada: string
   imagens: File[] 
   imagensExistentes: string[] 
+  image?: string | null; // 
 }
 
 export interface Pedido {
