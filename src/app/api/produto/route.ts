@@ -8,7 +8,7 @@ interface ErrorResponse {
 
 // --- FUNÇÃO GET para buscar todos os produtos ---
 export async function GET(request: NextRequest) {
-  console.log("====== [APP ROUTER - GET /api/produtos] Buscando produtos ======");
+  console.log("====== [APP ROUTER - GET /api/produto] Buscando produtos ======");
   try {
     const produtos = await prisma.produto.findMany({
       orderBy: {

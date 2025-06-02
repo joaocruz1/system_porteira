@@ -10,6 +10,15 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model produtos {
+  id_product          Int     @id @default(autoincrement())
+  nome        String
+  categoria String
+  quantidade Int
+  preco Decimal
+  data_entrada DateTime
+  image String
+}
 model pedidos {
   id          Int     @id @default(autoincrement())
   data_pedido DateTime 
@@ -17,3 +26,4 @@ model pedidos {
   total       Decimal
   image       String
 }
+

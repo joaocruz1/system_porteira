@@ -57,8 +57,8 @@ export function EstoqueProvider({ children,initialProdutos }: EstoqueProviderPro
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const API_BASE_URL_PRODUCT2 = '/api'; // <--- VERIFIQUE E AJUSTE ISTO!
-  const API_BASE_URL_PRODUCT: string = process.env.NEXT_PUBLIC_API_PRODUCTS_URL!;
+  const API_BASE_URL_PRODUCT = '/api'; // <--- VERIFIQUE E AJUSTE ISTO!
+  const API_BASE_URL_PRODUCT2: string = process.env.NEXT_PUBLIC_API_PRODUCTS_URL!;
 
   const fetchData = useCallback(async (isInitialContextLoad = false) => {
     // Se estamos carregando no contexto inicial E initialProdutos foram fornecidos E não estão vazios,
@@ -77,7 +77,7 @@ export function EstoqueProvider({ children,initialProdutos }: EstoqueProviderPro
       if (!API_BASE_URL_PRODUCT) {
         throw new Error("URL da API de Produtos não configurada.");
       }
-      const response = await fetch(`${API_BASE_URL_PRODUCT}/produtos`);
+      const response = await fetch(`${API_BASE_URL_PRODUCT}/produto`);
       if (!response.ok) {
         throw new Error(`Erro ao buscar dados: ${response.statusText}`);
       }
