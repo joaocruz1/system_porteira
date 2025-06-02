@@ -10,14 +10,16 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model produtos {
-  id_product          Int     @id @default(autoincrement())
-  nome        String
-  categoria String
-  quantidade Int
-  preco Decimal
-  data_entrada DateTime
-  image String
+model Produto {
+  id           String   @id @default(uuid()) @map("id_produt") // No Prisma é 'id', no DB é 'id_produto'
+  nome         String
+  categoria    String?
+  quantidade   Int?
+  preco        Float?
+  fornecedor   String?
+  data_entrada DateTime? @map("data_entrada") // No Prisma é 'data_entrada', no DB também é 'data_entrada'
+  image        String?                      // No Prisma é 'image', no DB também é 'image'
+  
 }
 model pedidos {
   id          Int     @id @default(autoincrement())

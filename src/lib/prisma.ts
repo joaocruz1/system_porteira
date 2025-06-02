@@ -1,15 +1,17 @@
-import { PrismaClient } from '@prisma/client';
+// src/lib/prisma.ts
+import { PrismaClient } from '@/generated/prisma'; // <--- LINHA CORRIGIDA
 
-let prisma: PrismaClient;
-
-if (process.env.NODE_ENV === 'production') {
-  prisma = new PrismaClient();
-} else {
-  // Em desenvolvimento, evite criar múltiplas instâncias do PrismaClient devido ao hot-reloading
-  if (!global.prisma) {
-    global.prisma = new PrismaClient();
-  }
-  prisma = global.prisma;
+declare global {
+  // eslint-disable-next-line no-var
+  var prisma: PrismaClient | undefined;
 }
 
-export default prisma;
+export const prisma =
+  global.prisma ||
+  new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+  });
+
+if (process.env.NODE_ENV !== 'production') {
+  global.prisma = prisma;
+}

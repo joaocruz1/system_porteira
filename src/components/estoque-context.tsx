@@ -61,12 +61,9 @@ export function EstoqueProvider({ children,initialProdutos }: EstoqueProviderPro
   const API_BASE_URL_PRODUCT2: string = process.env.NEXT_PUBLIC_API_PRODUCTS_URL!;
 
   const fetchData = useCallback(async (isInitialContextLoad = false) => {
-    // Se estamos carregando no contexto inicial E initialProdutos foram fornecidos E não estão vazios,
-    // então usamos esses dados e não buscamos novamente.
     if (isInitialContextLoad && initialProdutos && initialProdutos.length > 0) {
-      console.log("CTX: Usando initialProdutos do servidor.");
-      setProdutos(initialProdutos); // Garante que o estado reflita os props iniciais
-      setIsLoading(false);
+      console.log("CTX: Usando initialProdutos do servidor, estado já definido.");
+      if (isLoading) setIsLoading(false);
       return;
     }
 
@@ -77,52 +74,57 @@ export function EstoqueProvider({ children,initialProdutos }: EstoqueProviderPro
       if (!API_BASE_URL_PRODUCT) {
         throw new Error("URL da API de Produtos não configurada.");
       }
-      const response = await fetch(`${API_BASE_URL_PRODUCT}/produto`);
+      const response = await fetch(`${API_BASE_URL_PRODUCT}/produto`); 
+      
       if (!response.ok) {
-        throw new Error(`Erro ao buscar dados: ${response.statusText}`);
+        let errorDetails = response.statusText;
+        try {
+            const errorData = await response.json();
+            errorDetails = errorData.error || errorData.message || errorDetails;
+        } catch (e) {
+        }
+        throw new Error(`Erro ao buscar dados: ${errorDetails}`);
       }
-      const rawResponse = await response.json();
-      if (typeof rawResponse.output !== 'string') {
-        throw new Error("Formato de resposta inesperado: 'output' não é uma string.");
+
+      const produtosDaApi = await response.json(); 
+      console.log("CTX: Resposta da API (/api/produto):", produtosDaApi);
+
+
+      if (!Array.isArray(produtosDaApi) || !produtosDaApi.every(item => typeof item === 'object' && item && 'id' in item && 'nome' in item)) {
+        console.error("CTX: Dados recebidos da API não estão no formato esperado de Produto[].", produtosDaApi);
+        throw new Error("Dados de produtos recebidos da API não estão no formato esperado.");
       }
-      let finalProdutosData: Produto[];
-      try {
-        finalProdutosData = JSON.parse(rawResponse.output);
-      } catch (parseError) {
-        throw new Error("Formato de string de produtos inválido na resposta.");
-      }
-      if (!Array.isArray(finalProdutosData) || !finalProdutosData.every(item => typeof item === 'object' && item && 'id' in item)) {
-        throw new Error("Dados de produtos não estão no formato de array de objetos Produto.");
-      }
-      setProdutos(finalProdutosData);
-      console.log("CTX: Produtos carregados com sucesso pela API:", finalProdutosData.length);
+      
+      setProdutos(produtosDaApi);
+      console.log("CTX: Produtos carregados com sucesso pela API:", produtosDaApi.length);
+
     } catch (err) {
       console.error("CTX: Erro ao buscar dados:", err);
       setError((err as Error).message || "Erro desconhecido ao buscar dados.");
-      setProdutos(initialProdutos || []); // Volta para o inicial ou vazio em caso de erro
+      // Em caso de erro na busca, mantém os produtos iniciais ou define como array vazio
+      setProdutos(initialProdutos || []);
     } finally {
       setIsLoading(false);
     }
-  }, [API_BASE_URL_PRODUCT, initialProdutos]); // initialProdutos é uma dependência
-
+  }, [API_BASE_URL_PRODUCT, initialProdutos, isLoading]); // Adicionado isLoading para evitar re-renderizações desnecessárias
 
   useEffect(() => {
-    // Se não recebemos produtos iniciais do servidor, ou se eles estavam vazios,
-    // então o cliente deve tentar buscar.
-    if (!initialProdutos || initialProdutos.length === 0) {
-      console.log("CTX useEffect: initialProdutos não fornecidos ou vazios, chamando fetchData(true).");
-      fetchData(true); // true indica que é o carregamento inicial do contexto
-    } else {
-      // Se initialProdutos foram fornecidos, o estado já foi inicializado com eles.
-      // Apenas garantimos que isLoading seja false.
-      console.log("CTX useEffect: initialProdutos fornecidos, definindo isLoading para false.");
-      setIsLoading(false);
+    if ((!initialProdutos || initialProdutos.length === 0) && produtos.length === 0 && !isLoading && !error) {
+        console.log("CTX useEffect: Nenhum produto, chamando fetchData.");
+        fetchData(); 
+    } else if (initialProdutos && initialProdutos.length > 0 && produtos !== initialProdutos) {
+        console.log("CTX useEffect: initialProdutos existem. Estado atual de produtos:", produtos.length);
+        if (isLoading) setIsLoading(false); 
+    } else if (isLoading && (!initialProdutos || initialProdutos.length === 0)) {
+        // Se está carregando e não há produtos iniciais, permite que fetchData continue.
+        console.log("CTX useEffect: Carregando e sem produtos iniciais, fetchData prosseguirá.");
     }
-  }, [fetchData, initialProdutos]); // Adicionado initialProdutos como dependência
 
-  const refreshData = () => {
-    fetchData()
-  }
+
+  }, [initialProdutos, fetchData, produtos, isLoading, error]); // Dependências ajustadas
+    const refreshData = useCallback(() => {
+        fetchData(false); 
+    }, [fetchData]);
 
   // As funções de CUD (adicionarProduto, removerProduto, etc.) abaixo
   // ainda usam `${API_BASE_URL}/produtos` e `${API_BASE_URL}/pedidos`.
