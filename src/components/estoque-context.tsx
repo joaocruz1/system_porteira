@@ -13,6 +13,8 @@ export interface Produto {
   preco: number
   fornecedor: string
   dataEntrada: string
+  imagens: File[] 
+  imagensExistentes: string[] 
 }
 
 export interface Pedido {
@@ -58,12 +60,14 @@ export function EstoqueProvider({ children,initialProdutos }: EstoqueProviderPro
   const [error, setError] = useState<string | null>(null)
 
   const API_BASE_URL_PRODUCT = '/api'; // <--- VERIFIQUE E AJUSTE ISTO!
-  const API_BASE_URL_PRODUCT2: string = process.env.NEXT_PUBLIC_API_PRODUCTS_URL!;
 
   const fetchData = useCallback(async (isInitialContextLoad = false) => {
+    // Se estamos carregando no contexto inicial E initialProdutos foram fornecidos E não estão vazios,
+    // então usamos esses dados e não buscamos novamente.
     if (isInitialContextLoad && initialProdutos && initialProdutos.length > 0) {
-      console.log("CTX: Usando initialProdutos do servidor, estado já definido.");
-      if (isLoading) setIsLoading(false);
+      console.log("CTX: Usando initialProdutos do servidor.");
+      setProdutos(initialProdutos); // Garante que o estado reflita os props iniciais
+      setIsLoading(false);
       return;
     }
 
@@ -74,102 +78,96 @@ export function EstoqueProvider({ children,initialProdutos }: EstoqueProviderPro
       if (!API_BASE_URL_PRODUCT) {
         throw new Error("URL da API de Produtos não configurada.");
       }
-      const response = await fetch(`${API_BASE_URL_PRODUCT}/produto`); 
-      
+      const response = await fetch(`${API_BASE_URL_PRODUCT}/produto`);
       if (!response.ok) {
-        let errorDetails = response.statusText;
-        try {
-            const errorData = await response.json();
-            errorDetails = errorData.error || errorData.message || errorDetails;
-        } catch (e) {
-        }
-        throw new Error(`Erro ao buscar dados: ${errorDetails}`);
+        throw new Error(`Erro ao buscar dados: ${response.statusText}`);
       }
-
-      const produtosDaApi = await response.json(); 
-      console.log("CTX: Resposta da API (/api/produto):", produtosDaApi);
-
-
-      if (!Array.isArray(produtosDaApi) || !produtosDaApi.every(item => typeof item === 'object' && item && 'id' in item && 'nome' in item)) {
-        console.error("CTX: Dados recebidos da API não estão no formato esperado de Produto[].", produtosDaApi);
-        throw new Error("Dados de produtos recebidos da API não estão no formato esperado.");
+      const rawResponse = await response.json();
+      let finalProdutosData: Produto[];
+      try {
+        finalProdutosData = rawResponse;
+      } catch (parseError) {
+        throw new Error("Formato de string de produtos inválido na resposta.");
       }
-      
-      setProdutos(produtosDaApi);
-      console.log("CTX: Produtos carregados com sucesso pela API:", produtosDaApi.length);
-
+      if (!Array.isArray(finalProdutosData) || !finalProdutosData.every(item => typeof item === 'object' && item && 'id' in item)) {
+        throw new Error("Dados de produtos não estão no formato de array de objetos Produto.");
+      }
+      setProdutos(finalProdutosData);
+      console.log("CTX: Produtos carregados com sucesso pela API:", finalProdutosData.length);
     } catch (err) {
       console.error("CTX: Erro ao buscar dados:", err);
       setError((err as Error).message || "Erro desconhecido ao buscar dados.");
-      // Em caso de erro na busca, mantém os produtos iniciais ou define como array vazio
-      setProdutos(initialProdutos || []);
+      setProdutos(initialProdutos || []); // Volta para o inicial ou vazio em caso de erro
     } finally {
       setIsLoading(false);
     }
-  }, [API_BASE_URL_PRODUCT, initialProdutos, isLoading]); // Adicionado isLoading para evitar re-renderizações desnecessárias
+  }, [API_BASE_URL_PRODUCT, initialProdutos]); // initialProdutos é uma dependência
+
 
   useEffect(() => {
-    if ((!initialProdutos || initialProdutos.length === 0) && produtos.length === 0 && !isLoading && !error) {
-        console.log("CTX useEffect: Nenhum produto, chamando fetchData.");
-        fetchData(); 
-    } else if (initialProdutos && initialProdutos.length > 0 && produtos !== initialProdutos) {
-        console.log("CTX useEffect: initialProdutos existem. Estado atual de produtos:", produtos.length);
-        if (isLoading) setIsLoading(false); 
-    } else if (isLoading && (!initialProdutos || initialProdutos.length === 0)) {
-        // Se está carregando e não há produtos iniciais, permite que fetchData continue.
-        console.log("CTX useEffect: Carregando e sem produtos iniciais, fetchData prosseguirá.");
+    // Se não recebemos produtos iniciais do servidor, ou se eles estavam vazios,
+    // então o cliente deve tentar buscar.
+    if (!initialProdutos || initialProdutos.length === 0) {
+      console.log("CTX useEffect: initialProdutos não fornecidos ou vazios, chamando fetchData(true).");
+      fetchData(true); // true indica que é o carregamento inicial do contexto
+    } else {
+      // Se initialProdutos foram fornecidos, o estado já foi inicializado com eles.
+      // Apenas garantimos que isLoading seja false.
+      console.log("CTX useEffect: initialProdutos fornecidos, definindo isLoading para false.");
+      setIsLoading(false);
     }
+  }, [fetchData, initialProdutos]); // Adicionado initialProdutos como dependência
 
-
-  }, [initialProdutos, fetchData, produtos, isLoading, error]); // Dependências ajustadas
-    const refreshData = useCallback(() => {
-        fetchData(false); 
-    }, [fetchData]);
-
-  // As funções de CUD (adicionarProduto, removerProduto, etc.) abaixo
-  // ainda usam `${API_BASE_URL}/produtos` e `${API_BASE_URL}/pedidos`.
-  // Você precisará atualizá-las para usar `API_PRODUCTS_URL` e `API_ORDERS_URL` (se criada)
-  // e certificar-se de que seus webhooks do n8n para POST/PUT/DELETE
-  // estão configurados com os caminhos corretos (ex: /produtos ou /produtos/{id}).
-  // Por exemplo:
-  // const adicionarProduto = async (produto: Omit<Produto, "id">) => {
-  //   try {
-  //     const response = await fetch(API_PRODUCTS_URL, { // Ou uma URL específica para POST
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify(produto),
-  //     })
-  //     // ...
-  //   } catch (err) { ... }
-  // }
-  // Repita para todas as outras funções de CUD.
-
-
-  const adicionarProduto = async (produto: Omit<Produto, "id">) => {
-    try {
-      const response = await fetch(`${API_BASE_URL_PRODUCT}/insert`, { 
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(produto),
-      })
-      if (!response.ok) {
-        throw new Error(`Erro ao adicionar produto: ${response.statusText}`)
-      }else{
-        toast("Produto Adicionado com Sucesso!")
-      }
-      refreshData()
-    } catch (err) {
-      console.error("Erro ao adicionar produto:", err)
-      setError((err as Error).message || "Erro desconhecido ao adicionar produto.")
-    }
+  const refreshData = () => {
+    fetchData()
   }
+
+const adicionarProduto = async (produto: Omit<Produto, "id">) => {
+  setIsLoading(true);
+  setError(null);
+  try {
+    const formData = new FormData();
+
+    // Adiciona os campos de texto do produto ao FormData
+    formData.append("nome", produto.nome);
+    if (produto.categoria) formData.append("categoria", produto.categoria);
+    formData.append("quantidade", produto.quantidade.toString());
+    formData.append("preco", produto.preco.toString());
+    if (produto.fornecedor) formData.append("fornecedor", produto.fornecedor);
+
+    if (produto.imagens && produto.imagens.length > 0) {
+  
+      formData.append("imageFile", produto.imagens[0], produto.imagens[0].name);
+    }
+    
+    const response = await fetch(`${API_BASE_URL_PRODUCT}/produto`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: `Erro ${response.status} ao adicionar produto: ${response.statusText}` }));
+      throw new Error(errorData.error || errorData.message || `Erro ao adicionar produto: ${response.statusText}`);
+    } else {
+      const data = await response.json(); // Produto criado retornado pela API
+      console.log("Produto adicionado com sucesso:", data);
+      toast("Produto Adicionado com Sucesso!");
+    }
+    refreshData(); // Atualiza a lista de produtos
+  } catch (err: unknown) {
+    console.error("Erro ao adicionar produto:", err);
+    const message = (err instanceof Error) ? err.message : "Erro desconhecido ao adicionar produto.";
+    setError(message);
+    toast.error(message);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
 const removerProduto = async (id: string): Promise<void> => {
   try {
     // A URL FINAL DEVE SER ALGO COMO '/api/produto/delete/SEU_ID'
-    const apiUrl = `${API_BASE_URL_PRODUCT2}/produto/delete/${id}`;
+    const apiUrl = `${API_BASE_URL_PRODUCT}/produto/delete/${id}`;
     console.log(`Chamando API Next.js em: ${apiUrl}`); // Verifique este log no console
 
     const response = await fetch(apiUrl, { // <--- ESTA CHAMADA DEVE USAR apiUrl
@@ -213,7 +211,7 @@ const removerProduto = async (id: string): Promise<void> => {
 const atualizarQuantidade = async (id: string, quantidade: number) => {
   try {
 
-    const apiUrl = `${API_BASE_URL_PRODUCT2}/produto/put/${id}`; 
+    const apiUrl = `${API_BASE_URL_PRODUCT}/produto/put/quantidade/${id}`; 
     console.log(`[FRONTEND] Chamando API Next.js (PUT) em: ${apiUrl} com quantidade: ${quantidade}`);
 
     const response = await fetch(apiUrl, {

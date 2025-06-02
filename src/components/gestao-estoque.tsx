@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Pencil, Trash2, Package, Search, AlertTriangle } from "lucide-react"
 import { useEstoque, type Produto } from "@/components/estoque-context"
 import { useAuth } from "@/components/auth-context"
+import Image from "next/image"
 import { ImageGallery } from "@/components/image-gallery"
 
 export function GestaoEstoque() {
@@ -541,9 +542,11 @@ export function GestaoEstoque() {
                     return (
                       <TableRow key={produto.id}>
                         <TableCell>
-                          <ImageGallery
-                            images={[`/placeholder.svg?height=100&width=100`]}
-                            productName={produto.nome}
+                         <Image 
+                          src={`/placeholder.svg`}
+                          alt={produto.nome}
+                          width={100}
+                          height={100}
                           />
                         </TableCell>
                         <TableCell className="font-medium">{produto.nome}</TableCell>
