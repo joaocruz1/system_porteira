@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Pencil, Trash2, Package, Search, AlertTriangle } from "lucide-react"
 import { useEstoque, type Produto } from "@/components/estoque-context"
 import { useAuth } from "@/components/auth-context"
+import { ImageGallery } from "@/components/image-gallery"
 
 export function GestaoEstoque() {
   const { permissions } = useAuth()
@@ -41,7 +42,12 @@ export function GestaoEstoque() {
     preco: 0,
     fornecedor: "",
     dataEntrada: new Date().toISOString().split("T")[0],
+    imagens: [] as File[],
+    imagensExistentes: [] as string[],
   })
+
+  const [imagemPreview, setImagemPreview] = useState<string | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   const produtosFiltrados = produtos.filter((produto) => {
     const matchCategoria = filtroCategoria === "todas" || produto.categoria === filtroCategoria
@@ -89,6 +95,8 @@ export function GestaoEstoque() {
       preco: 0,
       fornecedor: "",
       dataEntrada: new Date().toISOString().split("T")[0],
+      imagens: [],
+      imagensExistentes: [],
     })
   }
 
@@ -101,6 +109,8 @@ export function GestaoEstoque() {
       preco: produto.preco,
       fornecedor: produto.fornecedor,
       dataEntrada: produto.dataEntrada,
+      imagens: [],
+      imagensExistentes: [],
     })
     setDialogAberto(true)
   }
@@ -119,6 +129,63 @@ export function GestaoEstoque() {
     setProdutoExistenteSelecionado("")
     setQuantidadeAdicionar(0)
     setDialogAberto(true)
+  }
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    setNovoProduto((prev) => ({
+      ...prev,
+      imagens: [...prev.imagens, ...files].slice(0, 5), // Máximo 5 imagens
+    }))
+  }
+
+  const removeImage = (index: number) => {
+    setNovoProduto((prev) => ({
+      ...prev,
+      imagens: prev.imagens.filter((_, i) => i !== index),
+    }))
+  }
+
+  const capturePhoto = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      const video = document.createElement("video")
+      video.srcObject = stream
+      video.play()
+
+      const canvas = document.createElement("canvas")
+      const context = canvas.getContext("2d")
+
+      video.addEventListener("loadedmetadata", () => {
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        context?.drawImage(video, 0, 0)
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const file = new File([blob], `foto-${Date.now()}.jpg`, { type: "image/jpeg" })
+              setNovoProduto((prev) => ({
+                ...prev,
+                imagens: [...prev.imagens, file].slice(0, 5),
+              }))
+            }
+          },
+          "image/jpeg",
+          0.8,
+        )
+
+        stream.getTracks().forEach((track) => track.stop())
+      })
+    } catch (error) {
+      alert("Erro ao acessar a câmera. Verifique as permissões.")
+    }
+  }
+
+  const previewImage = (file: File) => {
+    const url = URL.createObjectURL(file)
+    setImagemPreview(url)
+    setPreviewOpen(true)
   }
 
   return (
@@ -293,6 +360,29 @@ export function GestaoEstoque() {
                         disabled={!!produtoEditando}
                       />
                     </div>
+
+                    <div className="grid grid-cols-4 items-start gap-4">
+                      <Label className="text-right mt-2">Imagens</Label>
+                      <div className="col-span-3">
+                        <ImageGallery
+                          images={novoProduto.imagensExistentes}
+                          productName={novoProduto.nome || "Novo produto"}
+                          onAddImages={(files) => {
+                            setNovoProduto((prev) => ({
+                              ...prev,
+                              imagens: [...prev.imagens, ...files].slice(0, 5),
+                            }))
+                          }}
+                          onRemoveImage={(index) => {
+                            setNovoProduto((prev) => ({
+                              ...prev,
+                              imagensExistentes: prev.imagensExistentes.filter((_, i) => i !== index),
+                            }))
+                          }}
+                          editable={true}
+                        />
+                      </div>
+                    </div>
                   </>
                 )}
               </div>
@@ -302,6 +392,23 @@ export function GestaoEstoque() {
                 </Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Preview da Imagem</DialogTitle>
+            </DialogHeader>
+            {imagemPreview && (
+              <div className="flex justify-center">
+                <img
+                  src={imagemPreview || "/placeholder.svg"}
+                  alt="Preview"
+                  className="max-w-full max-h-96 object-contain rounded"
+                />
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>
@@ -416,6 +523,7 @@ export function GestaoEstoque() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Imagem</TableHead>
                     <TableHead>Produto</TableHead>
                     <TableHead>Categoria</TableHead>
                     <TableHead>Quantidade</TableHead>
@@ -432,6 +540,12 @@ export function GestaoEstoque() {
                     const status = getStatusEstoque(produto.quantidade)
                     return (
                       <TableRow key={produto.id}>
+                        <TableCell>
+                          <ImageGallery
+                            images={[`/placeholder.svg?height=100&width=100`]}
+                            productName={produto.nome}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{produto.nome}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{produto.categoria}</Badge>
@@ -445,7 +559,7 @@ export function GestaoEstoque() {
                           R$ {(produto.quantidade * produto.preco).toFixed(2)}
                         </TableCell>
                         <TableCell>{produto.fornecedor}</TableCell>
-                        <TableCell>{produto.dataEntrada}</TableCell>
+                        <TableCell>{new Date(produto.dataEntrada).toLocaleDateString("pt-BR")}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="outline" size="sm" onClick={() => abrirEdicao(produto)}>
