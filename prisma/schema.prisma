@@ -21,11 +21,21 @@ model Produto {
   image        String?                      // No Prisma é 'image', no DB também é 'image'
   
 }
-model pedidos {
-  id          Int     @id @default(autoincrement())
-  data_pedido DateTime 
-  status      String
-  total       Decimal
-  image       String
+model Pedido {
+  id          String     @id @default(uuid()) @map("pedido_id")
+  cliente_id  String     @map("cliente_id")
+  data_pedido DateTime   
+  status Boolean 
+  total Decimal
+  logo String
+}
+
+model Cliente{
+  id          String     @id @default(uuid()) @map("cliente_id")
+  nome  String 
+  numero  Int 
+  endereco String 
+  email String
+  empresa String
 }
 

@@ -212,7 +212,7 @@ const removerProduto = async (id: string): Promise<void> => {
 const atualizarQuantidade = async (id: string, quantidade: number) => {
   try {
 
-    const apiUrl = `${API_BASE_URL_PRODUCT}/produto/put/quantidade/${id}`; 
+    const apiUrl = `${API_BASE_URL_PRODUCT}/produto/put/${id}`; 
     console.log(`[FRONTEND] Chamando API Next.js (PUT) em: ${apiUrl} com quantidade: ${quantidade}`);
 
     const response = await fetch(apiUrl, {

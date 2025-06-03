@@ -205,15 +205,13 @@ export default function PublicQuotePage() {
     console.log(customerData)
     console.log(quoteItems)
 
-    const response = await fetch("/api/send-client", {
+    const response = await fetch("/api/cliente", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        customerData
-      }),
-    })
+      body: JSON.stringify(customerData), // Enviando o objeto customerData diretamente
+    });
 
     const response2 = await fetch("/api/send-quote", {
       method: "POST",
