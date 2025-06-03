@@ -196,56 +196,80 @@ export default function PublicQuotePage() {
     return { subtotal, setupFees, total }
   }
 
-  const sendQuote = async() => {
-    if (!customerData.name || !customerData.email || !customerData.phone || quoteItems.length === 0) {
-      alert("Por favor, preencha seus dados e adicione pelo menos um item ao orçamento.")
-      return
+const sendQuote = async () => {
+  if (!customerData.name || !customerData.email || !customerData.phone || quoteItems.length === 0) {
+    alert("Por favor, preencha seus dados e adicione pelo menos um item ao orçamento.");
+    return;
+  }
+
+  console.log("Dados do Cliente para Envio:", customerData);
+  console.log("Itens do Orçamento para Envio:", quoteItems);
+
+  const formData = new FormData();
+
+  // 1. Adicionar dados do cliente (como string JSON)
+  formData.append('customerData', JSON.stringify(customerData));
+
+  // 2. Preparar e adicionar itens do orçamento (como string JSON, sem os Files)
+  // E extrair o primeiro arquivo de logo, se houver
+  let mainLogoFile: File | undefined = undefined;
+
+  const processedQuoteItems = quoteItems.map(item => {
+    // Se você quiser armazenar informações sobre qual item tinha o logo,
+    // você pode adicionar um campo como 'logoFileNamePlaceholder' no 'processedItem'.
+    // Por enquanto, apenas pegamos o primeiro arquivo de logo encontrado.
+    if (item.logoType === "image" && item.logoImage && !mainLogoFile) {
+      mainLogoFile = item.logoImage;
     }
+    // Criar um novo objeto sem a propriedade 'logoImage' para stringificação
+    const { logoImage, ...itemWithoutFile } = item;
+    return itemWithoutFile;
+  });
 
-    console.log(customerData)
-    console.log(quoteItems)
+  formData.append('quoteItems', JSON.stringify(processedQuoteItems));
 
-    const response = await fetch("/api/cliente", {
+  // 3. Adicionar o arquivo de logo principal, se existir
+  if (mainLogoFile) {
+    formData.append('logoFile', mainLogoFile);
+  }
+
+  // Debug: verificar o conteúdo do FormData antes de enviar
+  // for (let [key, value] of formData.entries()) {
+  //   console.log("FormData:", key, value);
+  // }
+
+  try {
+    const response = await fetch("/api/pedido", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(customerData), // Enviando o objeto customerData diretamente
+      // Não defina 'Content-Type' manualmente para FormData; o browser faz isso.
+      body: formData,
     });
 
-    const response2 = await fetch("/api/send-quote", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        quoteItems
-      }),
-    })
-    
-
-    if (!response.ok || !response2.ok) {
-      alert("Ocorreu um erro ao enviar o orçamento. Por favor, tente novamente mais tarde.")
-      return
-    }else{
-      alert("Orcamento Enviado com sucesso")
+    if (!response.ok) {
+      const errorResult = await response.json().catch(() => ({ error: "Erro desconhecido", details: response.statusText }));
+      alert(`Ocorreu um erro ao enviar o orçamento: ${errorResult.details || errorResult.error || response.statusText}. Por favor, tente novamente mais tarde.`);
+      return;
     }
-
-
-
-    // Simular envio do orçamento
-    alert("Orçamento enviado com sucesso! Entraremos em contato em breve.")
+    
+    // Se a resposta foi OK (2xx), então o alerta de sucesso original pode ser usado
+    // O alerta "Orcamento Enviado com sucesso" que estava comentado pode ser ativado aqui.
+    alert("Orçamento enviado com sucesso! Entraremos em contato em breve.");
 
     // Reset form
-    // Atualizar o reset do formulário após envio para incluir endereço e remover message
     setCustomerData({
       name: "",
       email: "",
       phone: "",
       company: "",
       address: "",
-    })
+    });
+    setQuoteItems([]); // Limpar itens do orçamento também
+  } catch (error) {
+      console.error("Falha na requisição de envio do orçamento:", error);
+      alert("Falha na comunicação ao enviar o orçamento. Verifique sua conexão e tente novamente.");
   }
+};
+
 
   const scrollToCustomerData = () => {
     const customerDataElement = document.getElementById("customer-data-section")
@@ -394,7 +418,7 @@ export default function PublicQuotePage() {
                       <div className="space-y-4">
                         <div className="relative overflow-hidden rounded-t-lg bg-gray-100">
                           <Image
-                            src={`/placeholder.svg?height=${imageDimensions.height}&width=${imageDimensions.width}`}
+                            src={`/uplods/catalogo/copo-termico-473.png?height=${imageDimensions.height}&width=${imageDimensions.width}`}
                             alt={product.name}
                             width={imageDimensions.width}
                             height={imageDimensions.height}

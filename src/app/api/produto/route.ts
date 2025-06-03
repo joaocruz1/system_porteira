@@ -11,7 +11,7 @@ interface ErrorResponse {
 
 // Função para garantir que o diretório de upload exista
 async function ensureUploadDirExists() {
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+  const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'produtos');
   try {
     await stat(uploadDir);
   } catch (e: any) {

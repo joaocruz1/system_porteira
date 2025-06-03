@@ -10,26 +10,31 @@ export interface Produto {
   nome: string
   categoria: string
   quantidade: number
-  preco: number
+  preco: number // Considere se este deve ser Decimal como no backend
   fornecedor: string
-  dataEntrada: string
-  imagens: File[] 
-  imagensExistentes: string[] 
-  image?: string | null; // 
+  dataEntrada: string // Pode ser string (ISO) ou Date
+  imagens: File[] // Para upload de novas imagens
+  imagensExistentes: string[] // URLs de imagens existentes
+  image?: string | null; // URL da imagem principal do produto vinda do backend
 }
 
+// Interface Pedido conforme definida no seu contexto.
+// Lembre-se que será necessário mapear os dados da API para esta estrutura.
 export interface Pedido {
   id: string
-  cliente: string
-  produtos: Array<{
+  cliente: string // No backend é cliente_infos (JSON com mais detalhes)
+  endereco : string
+  cliente_telefone: string
+  logo: string
+  produtos: Array<{ // No backend é item (JSON com estrutura de QuoteItem)
     produtoId: string
     nome: string
     quantidade: number
     preco: number
   }>
-  total: number
-  status: "pendente" | "processando" | "concluido" | "cancelado"
-  dataPedido: string
+  total: number // Considere se este deve ser Decimal
+  status: "pendente" | "processando" | "concluido" | "cancelado" // No backend o model Pedido tem status: Boolean
+  dataPedido: string // No backend é data_pedido (DateTime)
 }
 
 interface EstoqueContextType {
@@ -37,10 +42,11 @@ interface EstoqueContextType {
   pedidos: Pedido[]
   isLoading: boolean
   error: string | null
-  adicionarProduto: (produto: Omit<Produto, "id">) => Promise<void>
+  adicionarProduto: (produto: Omit<Produto, "id" | "imagensExistentes" | "image" >) => Promise<void>
   removerProduto: (id: string) => Promise<void>
   atualizarQuantidade: (id: string, quantidade: number) => Promise<void>
   atualizarProdutoExistente: (id: string, novaQuantidade: number) => Promise<void>
+  // Ajustar o tipo do parâmetro de criarPedido se necessário para corresponder ao que a API de Pedido espera
   criarPedido: (pedido: Omit<Pedido, "id">) => Promise<void>
   atualizarStatusPedido: (id: string, status: Pedido["status"]) => Promise<void>
   darBaixaPedido: (pedidoId: string) => Promise<void>
@@ -51,97 +57,156 @@ const EstoqueContext = createContext<EstoqueContextType | undefined>(undefined)
 
 interface EstoqueProviderProps {
   children: ReactNode;
-  initialProdutos?: Produto[]; // Prop para produtos iniciais
+  initialProdutos?: Produto[];
+  initialPedidos?: Pedido[]; // Adicionando para consistência, se quiser carregar pedidos inicialmente também
 }
 
-export function EstoqueProvider({ children,initialProdutos }: EstoqueProviderProps) {
-  const [produtos, setProdutos] = useState<Produto[]>([])
-  const [pedidos, setPedidos] = useState<Pedido[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+export function EstoqueProvider({ children, initialProdutos, initialPedidos }: EstoqueProviderProps) {
+  const [produtos, setProdutos] = useState<Produto[]>(initialProdutos || [])
+  const [pedidos, setPedidos] = useState<Pedido[]>(initialPedidos || [])
+  const [isLoading, setIsLoading] = useState(true) // Geralmente true no início
   const [error, setError] = useState<string | null>(null)
 
-  const API_BASE_URL_PRODUCT = '/api'; // <--- VERIFIQUE E AJUSTE ISTO!
+  const API_BASE_URL = '/api';
 
   const fetchData = useCallback(async (isInitialContextLoad = false) => {
-    // Se estamos carregando no contexto inicial E initialProdutos foram fornecidos E não estão vazios,
-    // então usamos esses dados e não buscamos novamente.
-    if (isInitialContextLoad && initialProdutos && initialProdutos.length > 0) {
-      console.log("CTX: Usando initialProdutos do servidor.");
-      setProdutos(initialProdutos); // Garante que o estado reflita os props iniciais
-      setIsLoading(false);
-      return;
-    }
-
-    console.log("CTX: Buscando dados da API...");
     setIsLoading(true);
     setError(null);
+    console.log("CTX: Iniciando busca de dados (Produtos e Pedidos)...");
+
     try {
-      if (!API_BASE_URL_PRODUCT) {
-        throw new Error("URL da API de Produtos não configurada.");
+      // 1. Buscar ou Definir Produtos
+      if (isInitialContextLoad && initialProdutos && initialProdutos.length > 0) {
+        console.log("CTX: Usando initialProdutos do servidor.");
+        setProdutos(initialProdutos);
+      } else {
+        console.log("CTX: Buscando produtos da API...");
+        const responseProdutos = await fetch(`${API_BASE_URL}/produto`);
+        if (!responseProdutos.ok) {
+          const errorData = await responseProdutos.json().catch(() => ({}));
+          throw new Error(errorData.details || errorData.error || `Erro ao buscar produtos: ${responseProdutos.statusText} (${responseProdutos.status})`);
+        }
+        const produtosDataAPI = await responseProdutos.json();
+        if (!Array.isArray(produtosDataAPI) || !produtosDataAPI.every(item => typeof item === 'object' && item && 'id' in item)) {
+          throw new Error("Dados de produtos recebidos da API não são válidos.");
+        }
+        setProdutos(produtosDataAPI);
+        console.log("CTX: Produtos carregados da API:", produtosDataAPI.length);
       }
-      const response = await fetch(`${API_BASE_URL_PRODUCT}/produto`);
-      if (!response.ok) {
-        throw new Error(`Erro ao buscar dados: ${response.statusText}`);
+
+      // 2. Buscar ou Definir Pedidos
+      if (isInitialContextLoad && initialPedidos && initialPedidos.length > 0) {
+        console.log("CTX: Usando initialPedidos do servidor.");
+        setPedidos(initialPedidos); // Usar os pedidos iniciais se fornecidos no carregamento inicial
+      } else {
+        console.log("CTX: Buscando pedidos da API...");
+        const responsePedidos = await fetch(`${API_BASE_URL}/pedido`); // Endpoint GET para todos os pedidos
+        if (!responsePedidos.ok) {
+          const errorData = await responsePedidos.json().catch(() => ({}));
+          throw new Error(errorData.details || errorData.error || `Erro ao buscar pedidos: ${responsePedidos.statusText} (${responsePedidos.status})`);
+        }
+        const rawPedidosFromApi = await responsePedidos.json();
+
+        if (!Array.isArray(rawPedidosFromApi)) {
+          throw new Error("Dados de pedidos recebidos da API não são um array.");
+        }
+        
+        // Mapeamento dos dados da API para a interface Pedido do contexto
+        const mappedPedidos: Pedido[] = rawPedidosFromApi.map((apiPedido: any) => {
+          let clienteNome = "N/A";
+          let clienteEndereco = "N/A";
+          let clienteTelefone = "N/A";
+          if (apiPedido.cliente_infos) {
+            clienteNome = typeof apiPedido.cliente_infos.name === 'string' ? apiPedido.cliente_infos.name : JSON.stringify(apiPedido.cliente_infos);
+            clienteEndereco = typeof apiPedido.cliente_infos.address === 'string' ? apiPedido.cliente_infos.address : JSON.stringify(apiPedido.cliente_infos);
+            clienteTelefone = typeof apiPedido.cliente_infos.phone === 'string' ? apiPedido.cliente_infos.phone : JSON.stringify(apiPedido.cliente_infos);
+          }
+
+          let produtosPedido: Pedido['produtos'] = [];
+          if (Array.isArray(apiPedido.item)) {
+            produtosPedido = apiPedido.item.map((orderItem: any) => ({
+              produtoId: orderItem.product?.id || orderItem.custom?.id || 'N/A',
+              nome: orderItem.product?.name || orderItem.custom?.productName || 'Produto Desconhecido',
+              quantidade: orderItem.quantity || 0,
+              preco: orderItem.unitPrice || 0,
+            }));
+          }
+
+          let statusPedido: Pedido["status"] = "pendente";
+          if (typeof apiPedido.status === 'boolean') { // No seu modelo Prisma Pedido, status é Boolean
+            statusPedido = apiPedido.status ? "concluido" : "pendente"; // Exemplo de mapeamento
+          } else if (typeof apiPedido.status === 'string') { // Se já vier como o enum string
+             const validStatuses: Pedido["status"][] = ["pendente", "processando", "concluido", "cancelado"];
+            if (validStatuses.includes(apiPedido.status)) {
+                statusPedido = apiPedido.status;
+            }
+          }
+
+          return {
+            id: apiPedido.id,
+            cliente: clienteNome,
+            endereco : clienteEndereco,
+            cliente_telefone: clienteTelefone,
+            logo : apiPedido.logo || "caminho/padrao/ou/string_vazia_se_permitido.png", // Pegue o logo da API
+            produtos: produtosPedido,
+            total: Number(apiPedido.total) || 0,
+            status: statusPedido,
+            dataPedido: apiPedido.data_pedido ? new Date(apiPedido.data_pedido).toLocaleDateString('pt-BR') : 'Data Inválida',
+          };
+        });
+        setPedidos(mappedPedidos);
+        console.log("CTX: Pedidos carregados e mapeados da API:", mappedPedidos.length);
       }
-      const rawResponse = await response.json();
-      let finalProdutosData: Produto[];
-      try {
-        finalProdutosData = rawResponse;
-      } catch (parseError) {
-        throw new Error("Formato de string de produtos inválido na resposta.");
-      }
-      if (!Array.isArray(finalProdutosData) || !finalProdutosData.every(item => typeof item === 'object' && item && 'id' in item)) {
-        throw new Error("Dados de produtos não estão no formato de array de objetos Produto.");
-      }
-      setProdutos(finalProdutosData);
-      console.log("CTX: Produtos carregados com sucesso pela API:", finalProdutosData.length);
     } catch (err) {
-      console.error("CTX: Erro ao buscar dados:", err);
-      setError((err as Error).message || "Erro desconhecido ao buscar dados.");
-      setProdutos(initialProdutos || []); // Volta para o inicial ou vazio em caso de erro
+      console.error("CTX: Erro durante fetchData (produtos ou pedidos):", err);
+      const message = (err instanceof Error) ? err.message : "Erro desconhecido ao buscar dados.";
+      setError(message);
+      // Em caso de erro, reverter para os iniciais ou vazio para não quebrar a UI
+      if (!(isInitialContextLoad && initialProdutos && initialProdutos.length > 0)) {
+        setProdutos(initialProdutos || []);
+      }
+      if (!(isInitialContextLoad && initialPedidos && initialPedidos.length > 0)) {
+        setPedidos(initialPedidos || []);
+      }
     } finally {
       setIsLoading(false);
+      console.log("CTX: Busca de dados (Produtos e Pedidos) finalizada.");
     }
-  }, [API_BASE_URL_PRODUCT, initialProdutos]); // initialProdutos é uma dependência
-
+  }, [API_BASE_URL, initialProdutos, initialPedidos]); // Adiciona initialPedidos aqui
 
   useEffect(() => {
-    // Se não recebemos produtos iniciais do servidor, ou se eles estavam vazios,
-    // então o cliente deve tentar buscar.
-    if (!initialProdutos || initialProdutos.length === 0) {
-      console.log("CTX useEffect: initialProdutos não fornecidos ou vazios, chamando fetchData(true).");
-      fetchData(true); // true indica que é o carregamento inicial do contexto
-    } else {
-      // Se initialProdutos foram fornecidos, o estado já foi inicializado com eles.
-      // Apenas garantimos que isLoading seja false.
-      console.log("CTX useEffect: initialProdutos fornecidos, definindo isLoading para false.");
-      setIsLoading(false);
-    }
-  }, [fetchData, initialProdutos]); // Adicionado initialProdutos como dependência
+    console.log("CTX useEffect: Carregando dados iniciais (produtos e pedidos).");
+    fetchData(true); // true indica que é o carregamento inicial do contexto
+                    // fetchData usará initialProdutos/initialPedidos se disponíveis, senão buscará da API.
+  }, [fetchData]); // fetchData agora depende de initialProdutos e initialPedidos,
+                   // então o useEffect só precisa depender de fetchData.
 
-  const refreshData = () => {
-    fetchData()
-  }
+  const refreshData = useCallback(() => {
+    console.log("CTX: refreshData -> Buscando Produtos e Pedidos da API...");
+    fetchData(false); // false para garantir que sempre busque da API, ignorando initial props
+  }, [fetchData]);
 
-const adicionarProduto = async (produto: Omit<Produto, "id">) => {
+
+  // ... (suas funções adicionarProduto, removerProduto, etc. permanecem aqui) ...
+  // Lembre-se que elas podem precisar de ajustes se a lógica de refreshData agora afeta ambos.
+  // Por exemplo, adicionarProduto atualiza localmente 'produtos' e depois chama refreshData,
+  // que vai recarregar produtos E pedidos. Se for essa a intenção, está OK.
+
+const adicionarProduto = async (produtoData: Omit<Produto, "id" | "imagensExistentes" | "image" >) => {
   setIsLoading(true);
   setError(null);
   try {
     const formData = new FormData();
-
-    // Adiciona os campos de texto do produto ao FormData
-    formData.append("nome", produto.nome);
-    if (produto.categoria) formData.append("categoria", produto.categoria);
-    formData.append("quantidade", produto.quantidade.toString());
-    formData.append("preco", produto.preco.toString());
-    if (produto.fornecedor) formData.append("fornecedor", produto.fornecedor);
-
-    if (produto.imagens && produto.imagens.length > 0) {
-  
-      formData.append("imageFile", produto.imagens[0], produto.imagens[0].name);
+    formData.append("nome", produtoData.nome);
+    if (produtoData.categoria) formData.append("categoria", produtoData.categoria);
+    formData.append("quantidade", produtoData.quantidade.toString());
+    formData.append("preco", produtoData.preco.toString());
+    if (produtoData.fornecedor) formData.append("fornecedor", produtoData.fornecedor);
+    if (produtoData.imagens && produtoData.imagens.length > 0) {
+      formData.append("imageFile", produtoData.imagens[0], produtoData.imagens[0].name);
     }
     
-    const response = await fetch(`${API_BASE_URL_PRODUCT}/produto`, {
+    const response = await fetch(`${API_BASE_URL}/produto`, {
       method: "POST",
       body: formData,
     });
@@ -149,12 +214,11 @@ const adicionarProduto = async (produto: Omit<Produto, "id">) => {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: `Erro ${response.status} ao adicionar produto: ${response.statusText}` }));
       throw new Error(errorData.error || errorData.message || `Erro ao adicionar produto: ${response.statusText}`);
-    } else {
-      const data = await response.json(); // Produto criado retornado pela API
-      console.log("Produto adicionado com sucesso:", data);
-      toast("Produto Adicionado com Sucesso!");
     }
-    refreshData(); // Atualiza a lista de produtos
+    // const novoProdutoAdicionado = await response.json(); // API retorna o produto criado
+    // setProdutos(prev => [...prev, novoProdutoAdicionado]); // Atualiza estado local opcionalmente
+    toast.success("Produto Adicionado com Sucesso!");
+    refreshData(); // Recarrega produtos e pedidos
   } catch (err: unknown) {
     console.error("Erro ao adicionar produto:", err);
     const message = (err instanceof Error) ? err.message : "Erro desconhecido ao adicionar produto.";
@@ -166,173 +230,165 @@ const adicionarProduto = async (produto: Omit<Produto, "id">) => {
 };
 
 const removerProduto = async (id: string): Promise<void> => {
+  setIsLoading(true);
   try {
-    // A URL FINAL DEVE SER ALGO COMO '/api/produto/delete/SEU_ID'
-    const apiUrl = `${API_BASE_URL_PRODUCT}/produto/delete/${id}`;
-    console.log(`Chamando API Next.js em: ${apiUrl}`); // Verifique este log no console
-
-    const response = await fetch(apiUrl, { // <--- ESTA CHAMADA DEVE USAR apiUrl
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json"
-      }
-    });
-
-    // ... (resto do tratamento de response e erro) ...
-
+    const apiUrl = `${API_BASE_URL}/produto/delete/${id}`;
+    const response = await fetch(apiUrl, { method: "DELETE" });
     if (!response.ok) {
       let errorMessage = `Erro HTTP: ${response.status} ${response.statusText}`;
       try {
         const errorData = await response.json();
         errorMessage = errorData.error || errorData.message || errorMessage;
-        if (errorData.details) {
-          errorMessage += ` - ${errorData.details}`;
-        }
-      } catch (e) {
-        console.warn("Não foi possível parsear a resposta de erro como JSON.", e);
-      }
+      } catch (e) { /* ignora erro de parse */ }
       throw new Error(`Erro ao remover produto: ${errorMessage}`);
-    }else{
-      toast("Produto Removido com Sucesso!")
     }
-
-    console.log('Produto removido com sucesso (via proxy Next.js)');
-    refreshData();
-
+    toast.success("Produto Removido com Sucesso!");
+    refreshData(); // Recarrega produtos e pedidos
   } catch (err: unknown) {
     console.error("Erro na função removerProduto:", err);
-    if (err instanceof Error) {
-      setError(err.message || "Erro desconhecido ao remover produto.");
-    } else {
-      setError("Ocorreu um erro desconhecido ao remover o produto.");
-    }
+    const message = (err instanceof Error) ? err.message : "Erro desconhecido ao remover produto.";
+    setError(message);
+    toast.error(message);
+  } finally {
+    setIsLoading(false);
   }
-}
+};
 
 const atualizarQuantidade = async (id: string, quantidade: number) => {
+  setIsLoading(true);
   try {
-
-    const apiUrl = `${API_BASE_URL_PRODUCT}/produto/put/${id}`; 
-    console.log(`[FRONTEND] Chamando API Next.js (PUT) em: ${apiUrl} com quantidade: ${quantidade}`);
-
+    const apiUrl = `${API_BASE_URL}/produto/put/${id}`;
     const response = await fetch(apiUrl, {
-      method: "PUT", 
-      headers: {
-        "Content-Type": "application/json", 
-      },
-      body: JSON.stringify({ "quantidade": quantidade }), // Envia o corpo com a nova quantidade
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quantidade }),
     });
     if (!response.ok) {
-      toast("Ocorreu um erro para atualizar a quantidade!")
-      let errorMessage = `Erro HTTP: ${response.status} ${response.statusText}`
+      let errorMessage = `Erro HTTP: ${response.status} ${response.statusText}`;
       try {
         const errorData = await response.json();
-        errorMessage = errorData.error || errorData.message || errorMessage
-        if (errorData.details) {
-          errorMessage += ` - ${errorData.details}`
-        }
-      } catch (e) {
-        // Falhou ao parsear JSON
-      }
-      throw new Error(`Erro ao atualizar quantidade: ${errorMessage}`)
-    }else{
-      toast("Quantidade atualizada com Sucesso!")
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch (e) { /* ignora erro de parse */ }
+      throw new Error(`Erro ao atualizar quantidade: ${errorMessage}`);
     }
-
-    refreshData(); 
-  } catch (err: unknown) { // Use unknown para o erro
-    console.error("Erro na função atualizarQuantidade:", err)
-    if (err instanceof Error) {
-      setError(err.message || "Erro desconhecido ao atualizar quantidade.")
-    } else {
-      setError("Ocorreu um erro desconhecido ao atualizar a quantidade.")
-    }
+    toast.success("Quantidade atualizada com Sucesso!");
+    refreshData(); // Recarrega produtos e pedidos
+  } catch (err: unknown) {
+    console.error("Erro na função atualizarQuantidade:", err);
+    const message = (err instanceof Error) ? err.message : "Erro desconhecido ao atualizar quantidade.";
+    setError(message);
+    toast.error(message);
+  } finally {
+    setIsLoading(false);
   }
-  }
+};
 
   const atualizarProdutoExistente = async (id: string, novaQuantidade: number) => {
-    try {
-      const produtoAtual = produtos.find(p => p.id === id);
-      if (!produtoAtual) {
-        throw new Error("Produto não encontrado para atualização.");
-      }
-      const quantidadeTotal = produtoAtual.quantidade + novaQuantidade;
-      await atualizarQuantidade(id, quantidadeTotal);
-    } catch (err) {
-      console.error("Erro ao atualizar produto existente:", err)
-      setError((err as Error).message || "Erro desconhecido ao atualizar produto existente.")
+    const produtoAtual = produtos.find(p => p.id === id);
+    if (!produtoAtual) {
+      toast.error("Produto não encontrado para atualização.");
+      return;
     }
-  }
+    const quantidadeTotal = produtoAtual.quantidade + novaQuantidade; // Assumindo que é para SOMAR
+    await atualizarQuantidade(id, quantidadeTotal);
+  };
 
-  const criarPedido = async (pedido: Omit<Pedido, "id">) => {
-    // ATENÇÃO: Esta URL de pedido precisa ser a API_ORDERS_URL se você a definir
-    // e configurar um webhook separado no n8n.
+  const criarPedido = async (pedidoDataPayload: Omit<Pedido, "id">) => {
+    setIsLoading(true);
+    setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL_PRODUCT}/pedidos`, { // Modificar para API_ORDERS_URL
+      // Adaptar pedidoDataPayload para o formato que sua API de /api/pedido (POST) espera.
+      // Se ela espera FormData com quoteItems, customerData, logoFile, você precisará construir isso.
+      // O exemplo abaixo assume que a API espera um JSON no formato da interface Pedido do contexto.
+      // Isso provavelmente precisará de ajuste para corresponder à API de pedido que criamos antes, que usa FormData.
+      const response = await fetch(`${API_BASE_URL}/pedido`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(pedido),
-      })
+        headers: { "Content-Type": "application/json" }, // Mudar se enviar FormData
+        body: JSON.stringify(pedidoDataPayload), // Mudar se enviar FormData
+      });
+
       if (!response.ok) {
-        throw new Error(`Erro ao criar pedido: ${response.statusText}`)
+        const errorData = await response.json().catch(() => ({ error: `Erro ${response.status} ao criar pedido: ${response.statusText}` }));
+        throw new Error(errorData.error || errorData.message || `Erro ao criar pedido: ${response.statusText}`);
       }
-      refreshData()
-    } catch (err) {
-      console.error("Erro ao criar pedido:", err)
-      setError((err as Error).message || "Erro desconhecido ao criar pedido.")
+      toast.success("Pedido criado com sucesso!");
+      refreshData();
+    } catch (err: unknown) {
+      console.error("Erro ao criar pedido:", err);
+      const message = (err instanceof Error) ? err.message : "Erro desconhecido ao criar pedido.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
     }
-  }
+  };
 
   const atualizarStatusPedido = async (id: string, status: Pedido["status"]) => {
-    // ATENÇÃO: Esta URL de pedido precisa ser a API_ORDERS_URL se você a definir
-    // e configurar um webhook separado no n8n.
+    setIsLoading(true);
+    setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL_PRODUCT}/pedidos/${id}`, { // Modificar para API_ORDERS_URL
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status }),
-      })
+      // Ajuste o endpoint e o corpo da requisição se necessário para sua API
+      const response = await fetch(`${API_BASE_URL}/pedido/${id}`, { 
+        method: "PATCH", // ou PUT
+        headers: { "Content-Type": "application/json" },
+        // Envie o status no formato que sua API de backend espera.
+        // Se o backend espera um boolean para o campo 'status' no modelo Prisma:
+        // body: JSON.stringify({ status: status === 'concluido' }), 
+        body: JSON.stringify({ status }), // Se a API aceitar o status como string diretamente
+      });
       if (!response.ok) {
-        throw new Error(`Erro ao atualizar status do pedido: ${response.statusText}`)
+        const errorData = await response.json().catch(() => ({ error: `Erro ${response.status} ao atualizar status: ${response.statusText}` }));
+        throw new Error(errorData.error || errorData.message || `Erro ao atualizar status: ${response.statusText}`);
       }
-      refreshData()
-    } catch (err) {
-      console.error("Erro ao atualizar status do pedido:", err)
-      setError((err as Error).message || "Erro desconhecido ao atualizar status do pedido.")
+      toast.success(`Status do pedido ${id} atualizado para ${status}!`);
+      refreshData();
+    } catch (err: unknown) {
+      console.error("Erro ao atualizar status do pedido:", err);
+      const message = (err instanceof Error) ? err.message : "Erro desconhecido ao atualizar status.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
     }
-  }
+  };
 
   const darBaixaPedido = async (pedidoId: string) => {
-    const pedido = pedidos.find((p) => p.id === pedidoId)
-    if (!pedido || pedido.status === "concluido" || pedido.status === "cancelado") {
-      console.warn("Pedido não pode ser baixado ou já está concluído/cancelado.")
-      return
+    setIsLoading(true);
+    const pedido = pedidos.find((p) => p.id === pedidoId);
+    if (!pedido) {
+      toast.error("Pedido não encontrado para dar baixa.");
+      setIsLoading(false);
+      return;
+    }
+    if (pedido.status === "concluido" || pedido.status === "cancelado") {
+      toast("Pedido já está concluído ou cancelado.");
+      setIsLoading(false);
+      return;
     }
 
     try {
-      for (const item of pedido.produtos) {
-        const produtoEstoque = produtos.find((p) => p.id === item.produtoId)
-        if (produtoEstoque && produtoEstoque.quantidade >= item.quantidade) {
-          await atualizarQuantidade(item.produtoId, produtoEstoque.quantidade - item.quantidade)
+      for (const itemProdutoNoPedido of pedido.produtos) {
+        const produtoEmEstoque = produtos.find((p) => p.id === itemProdutoNoPedido.produtoId);
+        if (produtoEmEstoque && produtoEmEstoque.quantidade >= itemProdutoNoPedido.quantidade) {
+          await atualizarQuantidade(itemProdutoNoPedido.produtoId, produtoEmEstoque.quantidade - itemProdutoNoPedido.quantidade);
         } else {
-          console.error(`Estoque insuficiente para o produto ${item.nome}`)
-          setError(`Estoque insuficiente para o produto ${item.nome}. Pedido não pode ser finalizado.`)
-          return
+          throw new Error(`Estoque insuficiente para ${itemProdutoNoPedido.nome}.`);
         }
       }
-
-      await atualizarStatusPedido(pedidoId, "concluido")
-
-      refreshData()
-    } catch (err) {
-      console.error("Erro ao dar baixa no pedido:", err)
-      setError((err as Error).message || "Erro desconhecido ao dar baixa no pedido.")
+      await atualizarStatusPedido(pedidoId, "concluido");
+      toast.success(`Baixa no pedido ${pedidoId} realizada com sucesso!`);
+      // refreshData() é chamado por atualizarStatusPedido
+    } catch (err: unknown) {
+      console.error("Erro ao dar baixa no pedido:", err);
+      const message = (err instanceof Error) ? err.message : "Erro desconhecido ao dar baixa no pedido.";
+      setError(message);
+      toast.error(message);
+      // Se der erro na baixa de estoque, talvez o status do pedido não deva ser alterado
+      // ou precise ser revertido. Considere essa lógica.
+    } finally {
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <EstoqueContext.Provider
@@ -353,7 +409,7 @@ const atualizarQuantidade = async (id: string, quantidade: number) => {
     >
       {children}
     </EstoqueContext.Provider>
-  )
+  );
 }
 
 export function useEstoque() {

@@ -23,19 +23,13 @@ model Produto {
 }
 model Pedido {
   id          String     @id @default(uuid()) @map("pedido_id")
-  cliente_id  String     @map("cliente_id")
   data_pedido DateTime   
   status Boolean 
   total Decimal
   logo String
+  item Json
+  cliente_infos Json
 }
 
-model Cliente{
-  id          String     @id @default(uuid()) @map("cliente_id")
-  nome  String 
-  numero  Int 
-  endereco String 
-  email String
-  empresa String
-}
+
 

@@ -12,6 +12,7 @@ export interface CatalogItem {
   setupFee?: number // Taxa de setup para personalização
   material: string
   weight?: string
+  image?: string
 }
 
 export const METALASER_CATALOG: CatalogItem[] = [
@@ -28,6 +29,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 25.0,
     material: "Aço Inoxidável",
     weight: "350g",
+    image: "uplods/catalogo/copo-termico-473.png"
   },
   {
     id: "thermal-cup-speaker-473ml",
