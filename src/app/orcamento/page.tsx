@@ -418,7 +418,7 @@ const sendQuote = async () => {
                       <div className="space-y-4">
                         <div className="relative overflow-hidden rounded-t-lg bg-gray-100">
                           <Image
-                            src={`/uplods/catalogo/copo-termico-473.png?height=${imageDimensions.height}&width=${imageDimensions.width}`}
+                            src={product.image ? `/${product.image}` : "/images/placeholder.png"}
                             alt={product.name}
                             width={imageDimensions.width}
                             height={imageDimensions.height}

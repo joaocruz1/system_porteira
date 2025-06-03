@@ -73,9 +73,9 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="border-b p-4">
         <div className="flex items-center gap-2">
-          <Package className="h-6 w-6 text-green-600" />
+          <Package className="h-6 w-6 text-blue-500" />
           <div>
-            <h2 className="font-semibold">Porteira de Minas</h2>
+            <h2 className="font-semibold">Metal Laser</h2>
             <p className="text-xs text-muted-foreground">Sistema de Estoque</p>
           </div>
         </div>

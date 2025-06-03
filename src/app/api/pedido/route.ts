@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
 
     const novoPedidoData = {
       data_pedido: new Date(),
-      status: false,
+      status: "pendente",
       total: new Decimal(totalCalculado),
       logo: logoPathForDb,
       // Se quoteItems ou customerData forem null após o parse,

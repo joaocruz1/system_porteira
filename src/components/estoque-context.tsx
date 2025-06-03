@@ -328,7 +328,7 @@ const atualizarQuantidade = async (id: string, quantidade: number) => {
     setError(null);
     try {
       // Ajuste o endpoint e o corpo da requisição se necessário para sua API
-      const response = await fetch(`${API_BASE_URL}/pedido/${id}`, { 
+      const response = await fetch(`${API_BASE_URL}/pedido/status/${id}`, { 
         method: "PATCH", // ou PUT
         headers: { "Content-Type": "application/json" },
         // Envie o status no formato que sua API de backend espera.
@@ -352,42 +352,33 @@ const atualizarQuantidade = async (id: string, quantidade: number) => {
     }
   };
 
-  const darBaixaPedido = async (pedidoId: string) => {
+  const darBaixaPedido = async (id: string, status: Pedido["status"] = "concluido") => {
     setIsLoading(true);
-    const pedido = pedidos.find((p) => p.id === pedidoId);
-    if (!pedido) {
-      toast.error("Pedido não encontrado para dar baixa.");
-      setIsLoading(false);
-      return;
+  try {
+    const apiUrl = `${API_BASE_URL}/pedido/status/${id}`;
+    const response = await fetch(apiUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) {
+      let errorMessage = `Erro HTTP: ${response.status} ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch (e) { /* ignora erro de parse */ }
+      throw new Error(`Erro ao atualizar quantidade: ${errorMessage}`);
     }
-    if (pedido.status === "concluido" || pedido.status === "cancelado") {
-      toast("Pedido já está concluído ou cancelado.");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      for (const itemProdutoNoPedido of pedido.produtos) {
-        const produtoEmEstoque = produtos.find((p) => p.id === itemProdutoNoPedido.produtoId);
-        if (produtoEmEstoque && produtoEmEstoque.quantidade >= itemProdutoNoPedido.quantidade) {
-          await atualizarQuantidade(itemProdutoNoPedido.produtoId, produtoEmEstoque.quantidade - itemProdutoNoPedido.quantidade);
-        } else {
-          throw new Error(`Estoque insuficiente para ${itemProdutoNoPedido.nome}.`);
-        }
-      }
-      await atualizarStatusPedido(pedidoId, "concluido");
-      toast.success(`Baixa no pedido ${pedidoId} realizada com sucesso!`);
-      // refreshData() é chamado por atualizarStatusPedido
-    } catch (err: unknown) {
-      console.error("Erro ao dar baixa no pedido:", err);
-      const message = (err instanceof Error) ? err.message : "Erro desconhecido ao dar baixa no pedido.";
-      setError(message);
-      toast.error(message);
-      // Se der erro na baixa de estoque, talvez o status do pedido não deva ser alterado
-      // ou precise ser revertido. Considere essa lógica.
-    } finally {
-      setIsLoading(false);
-    }
+    toast.success("Pedido Atualizado com Sucesso!");
+    refreshData(); // Recarrega produtos e pedidos
+  } catch (err: unknown) {
+    console.error("Erro na função darBaixaPedido:", err);
+    const message = (err instanceof Error) ? err.message : "Erro desconhecido ao atualizar pedido.";
+    setError(message);
+    toast.error(message);
+  } finally {
+    setIsLoading(false);
+  }
   };
 
   return (

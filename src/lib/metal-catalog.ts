@@ -29,7 +29,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 25.0,
     material: "Aço Inoxidável",
     weight: "350g",
-    image: "uplods/catalogo/copo-termico-473.png"
+    image: "uploads/copo-termico-473.png"
   },
   {
     id: "thermal-cup-speaker-473ml",
@@ -44,6 +44,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 35.0,
     material: "Aço Inoxidável + Eletrônicos",
     weight: "450g",
+    image: "uploads/copo-termico-caixa-473.png"
   },
   {
     id: "thermal-cuia-350ml",
@@ -58,6 +59,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 20.0,
     material: "Aço Inoxidável",
     weight: "280g",
+    image: "uploads/copo-termico-cuia-350.png"
   },
   {
     id: "thermal-mug-450ml",
@@ -72,6 +74,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 22.0,
     material: "Aço Inoxidável",
     weight: "320g",
+    image: "uploads/caneca-termica-450.png"
   },
   {
     id: "large-thermal-cup-1200ml",
@@ -86,6 +89,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 30.0,
     material: "Aço Inoxidável",
     weight: "520g",
+    image: "uploads/copao-termico-1200.png"
   },
   {
     id: "tiffany-thermal-cup-1200ml",
@@ -100,6 +104,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 35.0,
     material: "Aço Inoxidável Premium",
     weight: "550g",
+    image: "uploads/copao-termico-tiffany-1200.png"
   },
   {
     id: "temperature-display-bottle-500ml",
@@ -114,6 +119,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 40.0,
     material: "Aço Inoxidável + Display LED",
     weight: "380g",
+    image: "uploads/garrafa-squeeze-temperatura-500.png"
   },
   {
     id: "thermal-squeeze-800ml",
@@ -128,6 +134,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 25.0,
     material: "Aço Inoxidável",
     weight: "420g",
+    image: "uploads/garrada-squeeze-termica-800.png"
   },
   {
     id: "thermal-squeeze-1l",
@@ -142,6 +149,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 28.0,
     material: "Aço Inoxidável",
     weight: "480g",
+    image: "uploads/garrafa-squeeze-termica-1000.png"
   },
   {
     id: "thermal-bottle-1200ml",
@@ -156,6 +164,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 32.0,
     material: "Aço Inoxidável",
     weight: "580g",
+    image: "uploads/garrafa-termica-1200.png"
   },
   {
     id: "quick-flip-bottle-800ml",
@@ -170,6 +179,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 30.0,
     material: "Aço Inoxidável",
     weight: "450g",
+    image: "uploads/garrafa-termica-quickflip-800.png"
   },
   {
     id: "veridiana-bottle-800ml",
@@ -184,6 +194,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 28.0,
     material: "Aço Inoxidável",
     weight: "440g",
+    image: "uploads/garrafa-termica-veridiana-800.png"
   },
   {
     id: "coffee-tea-bottle-950ml",
@@ -198,6 +209,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 30.0,
     material: "Aço Inoxidável",
     weight: "490g",
+    image : "uploads/garrafa-termica-cafe-950.png"
   },
   {
     id: "carabiner-keychain",
@@ -211,6 +223,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 45.0,
     material: "Alumínio",
     weight: "15g",
+    image: "uploads/chaveiro-mosquetao.png"
   },
   {
     id: "bottle-opener-keychain",
@@ -224,6 +237,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 50.0,
     material: "Aço Inoxidável",
     weight: "25g",
+    image: "uploads/chaveiro-abridor.png"
   },
   {
     id: "metal-pen",
@@ -237,6 +251,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 60.0,
     material: "Metal",
     weight: "35g",
+    image: "uploads/caneta-metal.png"
   },
   {
     id: "anti-stress-pen",
@@ -250,6 +265,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 65.0,
     material: "Plástico + Metal",
     weight: "40g",
+    image: "uploads/caneta-stresse.png"
   },
   {
     id: "stainless-penknife",
@@ -263,6 +279,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 20.0,
     material: "Aço Inoxidável",
     weight: "80g",
+    image:"uploads/facainox-clip-trava.png"
   },
   {
     id: "knife-32cm",
@@ -277,6 +294,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 35.0,
     material: "Aço Carbono + Madeira",
     weight: "180g",
+    image: "uploads/faca-32.png"
   },
   {
     id: "knife-30cm",
@@ -291,6 +309,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 32.0,
     material: "Aço Carbono + Madeira",
     weight: "160g",
+    image: "uploads/faca-30.png"
   },
   {
     id: "knife-42cm",
@@ -305,6 +324,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 45.0,
     material: "Aço Carbono + Madeira",
     weight: "220g",
+    image: "uploads/faca-42.png"
   },
   {
     id: "bbq-kit-2pc",
@@ -318,6 +338,8 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 55.0,
     material: "Aço Inoxidável + Madeira",
     weight: "350g",
+    image: "uploads/kit-churrasco-2.png"
+
   },
   {
     id: "tool-kit-12pc",
@@ -331,6 +353,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 75.0,
     material: "Aço + Plástico",
     weight: "580g",
+    image: "uploads/kit-ferramenta-12.png"
   },
   {
     id: "agenda-2025",
@@ -344,6 +367,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 25.0,
     material: "Couro Sintético",
     weight: "320g",
+    image: "uploads/agenda-1caneta.png"
   },
   {
     id: "electronic-corkscrew",
@@ -357,6 +381,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 50.0,
     material: "Aço Inoxidável + Eletrônicos",
     weight: "280g",
+    image: "uploads/saca-rolha-el.png"
   },
   {
     id: "flashlight",
@@ -370,6 +395,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 20.0,
     material: "Alumínio",
     weight: "120g",
+    image: "uploads/lanterna.png"
   },
   {
     id: "picanheira-gift-set",
@@ -388,6 +414,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 65.0,
     material: "Aço Inoxidável + Madeira",
     weight: "450g",
+    image: "uploads/kit-presente-picanheira-personalizada.png"
   },
   {
     id: "japanese-food-board",
@@ -401,10 +428,12 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 35.0,
     material: "Bambu",
     weight: "280g",
+    image: "uploads/petisqueira.png"
+
   },
   {
     id: "snack-board-20x30",
-    name: "Tábua de Petiscos",
+    name: "Tábua de Lanche",
     category: "Tábuas e Pranchas",
     dimensions: "20 cm x 30 cm",
     minimumOrder: 1,
@@ -415,6 +444,8 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 25.0,
     material: "Madeira Nobre",
     weight: "320g",
+    image: "uploads/tabua-lanche.png"
+
   },
   {
     id: "large-cutting-board",
@@ -429,6 +460,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 55.0,
     material: "Madeira Tratada",
     weight: "1.2kg",
+    image: "uploads/tabua-grande.png"
   },
   {
     id: "medium-cutting-board-42x42",
@@ -443,10 +475,11 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 40.0,
     material: "Madeira Nobre",
     weight: "680g",
+    image: "uploads/tabua-corte-media.png"
   },
   {
     id: "medium-cutting-board-37x50",
-    name: "Tábua de Corte Média",
+    name: "Tábua de Corte Média Retangular",
     category: "Tábuas e Pranchas",
     dimensions: "37 cm x 50 cm",
     minimumOrder: 1,
@@ -457,10 +490,11 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 42.0,
     material: "Madeira Nobre",
     weight: "720g",
+    image: "uploads/tabua-corte-media2.png"
   },
   {
     id: "medium-cutting-board-37x65",
-    name: "Tábua de Corte Média",
+    name: "Tábua de Corte Média Arte",
     category: "Tábuas e Pranchas",
     dimensions: "37 cm x 65 cm",
     minimumOrder: 1,
@@ -471,6 +505,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 45.0,
     material: "Madeira Nobre",
     weight: "850g",
+    image: "uploads/tabua-media-arte.png"
   },
   {
     id: "premium-bbq-board",
@@ -485,6 +520,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 50.0,
     material: "Madeira Premium",
     weight: "920g",
+    image: "uploads/tabua-premium.png"
   },
   {
     id: "churrasco-corner-board",
@@ -499,6 +535,7 @@ export const METALASER_CATALOG: CatalogItem[] = [
     setupFee: 30.0,
     material: "Madeira Nobre",
     weight: "480g",
+    image: "uploads/tabua-decorativa.png"
   },
 ]
 

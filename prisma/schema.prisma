@@ -24,7 +24,7 @@ model Produto {
 model Pedido {
   id          String     @id @default(uuid()) @map("pedido_id")
   data_pedido DateTime   
-  status Boolean 
+  status String 
   total Decimal
   logo String
   item Json
