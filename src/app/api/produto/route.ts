@@ -1,15 +1,19 @@
 // src/app/api/produto/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma'; // Corrigido para importação nomeada
-import path from 'path';
-import { writeFile, stat, mkdir } from 'fs/promises';
+import { prisma } from '@/lib/prisma';
+import { put } from '@vercel/blob'; // 1. Importar a função put do Vercel Blob
+
+// Remover as importações relacionadas ao sistema de arquivos local, se não forem mais usadas em outras partes do arquivo.
+// import path from 'path';
+// import { writeFile, stat, mkdir } from 'fs/promises';
 
 interface ErrorResponse {
   error: string;
   details?: string;
 }
 
-// Função para garantir que o diretório de upload exista
+// 2. Remover ou comentar a função ensureUploadDirExists, pois não será mais necessária para imagens de produtos.
+/*
 async function ensureUploadDirExists() {
   const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'produtos');
   try {
@@ -25,6 +29,7 @@ async function ensureUploadDirExists() {
   }
   return uploadDir;
 }
+*/
 
 export async function POST(request: NextRequest) {
   console.log("====== [APP ROUTER - POST /api/produto] Adicionando produto ======");
@@ -36,10 +41,9 @@ export async function POST(request: NextRequest) {
     const quantidadeStr = formData.get('quantidade') as string | null;
     const precoStr = formData.get('preco') as string | null;
     const fornecedor = formData.get('fornecedor') as string | null;
-    // Espera o arquivo com a chave "imageFile"
     const imageFile = formData.get('imageFile') as File | null; 
+    
     console.log("[API POST /produto] Conteúdo do formData para imageFile:", imageFile ? imageFile.name : "Nenhum arquivo recebido como imageFile");
-
 
     if (!nome) {
       return NextResponse.json<ErrorResponse>({ error: 'Campo "nome" é obrigatório.' }, { status: 400 });
@@ -55,45 +59,41 @@ export async function POST(request: NextRequest) {
         return NextResponse.json<ErrorResponse>({ error: '"preco" deve ser um número válido.' }, { status: 400 });
     }
     
-    let imageUrl: string | undefined = undefined;
+    let imageUrlInBlob: string | null = null; // Para armazenar a URL do Blob
 
-    if (imageFile) { // Este bloco só será executado se imageFile não for null
-      console.log("[API POST /produto] Processando arquivo de imagem:", imageFile.name);
-      const uploadDir = await ensureUploadDirExists();
-      const filename = `${Date.now()}_${imageFile.name.replace(/\s+/g, '_')}`;
-      const filePath = path.join(uploadDir, filename);
+    if (imageFile) {
+      console.log("[API POST /produto] Processando arquivo de imagem para o Vercel Blob:", imageFile.name);
       
-      const bytes = await imageFile.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      
-      await writeFile(filePath, buffer);
-      console.log(`[API POST /produto] Arquivo salvo em: ${filePath}`);
-      imageUrl = `/uploads/produtos/${filename}`; 
+      // 3. Fazer o upload para o Vercel Blob
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const safeFilename = imageFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      // Adicionar um prefixo de pasta específico para produtos, ex: 'produtos/'
+      const blobFilename = `produtos/${uniqueSuffix}_${safeFilename}`; 
+
+      try {
+        const blob = await put(blobFilename, imageFile, {
+          access: 'public', // Torna o arquivo publicamente acessível
+          // contentType: imageFile.type, // Opcional, o Vercel Blob geralmente infere isso
+        });
+        imageUrlInBlob = blob.url; // Armazena a URL retornada pelo Vercel Blob
+        console.log(`[API POST /produto] Arquivo de imagem salvo no Vercel Blob: ${imageUrlInBlob}`);
+      } catch (uploadError) {
+        console.error("Erro ao fazer upload da imagem do produto para o Vercel Blob:", uploadError);
+        return NextResponse.json<ErrorResponse>({ error: "Falha ao fazer upload da imagem do produto." }, { status: 500 });
+      }
     } else {
       console.log("[API POST /produto] Nenhum arquivo de imagem (imageFile) foi recebido ou processado.");
     }
 
-    // No seu schema.prisma, o campo é 'image'
     const novoProdutoData: any = {
       nome,
-      categoria: categoria || undefined, // Permite que seja opcional
+      categoria: categoria || undefined,
       quantidade,
       preco,
-      fornecedor: fornecedor || undefined, // Permite que seja opcional
-      // data_entrada: new Date(), // Se você tiver este campo no schema e quiser defini-lo aqui
+      fornecedor: fornecedor || undefined,
+      // data_entrada: new Date(), // Descomente se precisar definir a data de entrada aqui
+      image: imageUrlInBlob, // 4. Salvar a URL do Blob no banco de dados (ou null se não houver imagem)
     };
-
-    if (imageUrl) {
-      novoProdutoData.image = imageUrl; // Atribui ao campo 'image' do modelo Prisma
-    } else {
-      // Se não houver imagem, você pode querer definir um valor padrão ou deixar como null
-      // dependendo da configuração do seu banco (ex: "nao_informado" como string ou null)
-      // Se o campo 'image' no Prisma é opcional (String?), não definir aqui resultará em NULL.
-      // Se o seu DB tem um default "nao_informado", ele será usado se Prisma não enviar valor.
-      // Para forçar "nao_informado" se nenhuma imagem for enviada:
-      // novoProdutoData.image = "nao_informado"; 
-      // Mas é melhor deixar como null (omitindo) se for opcional e não houver imagem.
-    }
 
     const novoProduto = await prisma.produto.create({
       data: novoProdutoData,
@@ -114,9 +114,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ... (Sua função GET existente) ...
 export async function GET(request: NextRequest) {
-// ... (código da função GET que já está funcionando) ...
   console.log("====== [APP ROUTER - GET /api/produto] Buscando produtos ======");
   try {
     const produtos = await prisma.produto.findMany({
