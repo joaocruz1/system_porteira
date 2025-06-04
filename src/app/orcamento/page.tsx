@@ -226,7 +226,7 @@ const sendQuote = async () => {
   if (mainLogoFile) {
     formData.append('logoFile', mainLogoFile);
   }
- 
+
 
   try {
     const response = await fetch("/api/pedido", {
