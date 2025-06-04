@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Pencil, Trash2, Package, Search, AlertTriangle } from "lucide-react"
 import { useEstoque, type Produto } from "@/components/estoque-context"
 import { useAuth } from "@/components/auth-context"
+import Image from "next/image"
 import { ImageGallery } from "@/components/image-gallery"
 
 export function GestaoEstoque() {
@@ -110,7 +111,7 @@ export function GestaoEstoque() {
       fornecedor: produto.fornecedor,
       dataEntrada: produto.dataEntrada,
       imagens: [],
-      imagensExistentes: [],
+      imagensExistentes:  produto.image ? [produto.image] : [],
     })
     setDialogAberto(true)
   }
@@ -305,13 +306,13 @@ export function GestaoEstoque() {
                           <SelectValue placeholder="Selecione uma categoria" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Alimentos">Alimentos</SelectItem>
-                          <SelectItem value="Bebidas">Bebidas</SelectItem>
-                          <SelectItem value="Laticínios">Laticínios</SelectItem>
-                          <SelectItem value="Limpeza">Limpeza</SelectItem>
-                          <SelectItem value="Higiene">Higiene</SelectItem>
-                          <SelectItem value="Padaria">Padaria</SelectItem>
-                          <SelectItem value="Açougue">Açougue</SelectItem>
+                          <SelectItem value="Copos e Canecas">Copos e Canecas</SelectItem>
+                          <SelectItem value="Garrafas e Squezzes">Garrafaz e Squezzes</SelectItem>
+                          <SelectItem value="Chaveiros e Acessórios">Chaveiros e Acessórios</SelectItem>
+                          <SelectItem value="Escritório">Escritório</SelectItem>
+                          <SelectItem value="Facas e Utensílios">Facas e Utensílios</SelectItem>
+                          <SelectItem value="Kits e Conjuntos">Kits e Conjuntos</SelectItem>
+                          <SelectItem value="Utencilios">Utencilios</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -541,10 +542,11 @@ export function GestaoEstoque() {
                     return (
                       <TableRow key={produto.id}>
                         <TableCell>
-                          <ImageGallery
-                            images={[`/placeholder.svg?height=100&width=100`]}
-                            productName={produto.nome}
-                          />
+                         <ImageGallery
+                          images={produto.image ? [produto.image] : []} // ImageGallery espera um array de strings
+                          productName={produto.nome}
+                          editable={false} // Importante: para modo de visualização simples
+                        />
                         </TableCell>
                         <TableCell className="font-medium">{produto.nome}</TableCell>
                         <TableCell>

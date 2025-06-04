@@ -29,6 +29,9 @@ export function GestaoVendas() {
   const [pedidoSelecionado, setPedidoSelecionado] = useState<string | null>(null)
   const [novoPedido, setNovoPedido] = useState({
     cliente: "",
+    logo: "",
+    endereco: "",
+    cliente_telefone: "",
     produtos: [] as Array<{
       produtoId: string
       nome: string
@@ -94,6 +97,9 @@ export function GestaoVendas() {
       setDialogAberto(false)
       setNovoPedido({
         cliente: "",
+        logo: "",
+        endereco: "",
+        cliente_telefone: "",
         produtos: [],
         total: 0,
         status: "pendente",
@@ -244,7 +250,7 @@ export function GestaoVendas() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
+
                 <TableHead>Cliente</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Produtos</TableHead>
@@ -256,7 +262,6 @@ export function GestaoVendas() {
             <TableBody>
               {pedidos.map((pedido) => (
                 <TableRow key={pedido.id}>
-                  <TableCell className="font-medium">#{pedido.id}</TableCell>
                   <TableCell>{pedido.cliente}</TableCell>
                   <TableCell>{new Date(pedido.dataPedido).toLocaleDateString("pt-BR")}</TableCell>
                   <TableCell>

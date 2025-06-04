@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
   provider = "prisma-client-js"
@@ -12,6 +7,29 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL") 
+  directUrl = env("DIRECT_URL")
 }
+
+model Produto {
+  id           String   @id @default(uuid()) @map("id_produt") // No Prisma é 'id', no DB é 'id_produto'
+  nome         String
+  categoria    String?
+  quantidade   Int?
+  preco        Float?
+  fornecedor   String?
+  data_entrada DateTime? @map("data_entrada") // No Prisma é 'data_entrada', no DB também é 'data_entrada'
+  image        String?                      // No Prisma é 'image', no DB também é 'image'
+  
+}
+model Pedido {
+  id          String     @id @default(uuid()) @map("pedido_id")
+  data_pedido DateTime   
+  status String 
+  total Decimal
+  logo String
+  item Json
+  cliente_infos Json
+}
+
+
 

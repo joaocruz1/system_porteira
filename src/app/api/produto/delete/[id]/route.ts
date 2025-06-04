@@ -1,116 +1,80 @@
-// Arquivo: src/app/api/produto/delete/[id]/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma'; // Importando sua instância configurada do Prisma Client
 
-// Interface opcional para padronizar respostas de erro
+// Interface para padronizar respostas de erro
 interface ErrorResponse {
   error: string;
   details?: string;
 }
 
-// Define o tipo para os props da rota
+// Tipo para os props da rota, conforme sua correção que funcionou
 type Props = {
     params : Promise <{id: string}>
 }
 
-// URL base do seu webhook N8N (lendo do .env.local)
-const N8N_WEBHOOK_URL_FROM_ENV: string | undefined = process.env.N8N_WEBHOOK_URL;
-
-// Token de acesso para o N8N (lendo do .env.local)
-const N8N_FIXED_ACCESS_TOKEN: string | undefined = process.env.N8N_SERVER_ACCESS_TOKEN;
-
 export async function DELETE(
-  request: NextRequest,
+  request: NextRequest, // O objeto request pode não ser usado aqui, mas faz parte da assinatura
   props: Props
 ): Promise<NextResponse> {
   const params = await props.params;
   const id = params.id;
 
-  // Verificações robustas para as variáveis de ambiente
-  if (!N8N_WEBHOOK_URL_FROM_ENV) {
-    console.error("[PROXY API] ERRO CRÍTICO: N8N_WEBHOOK_URL não está configurado nas variáveis de ambiente do servidor.");
-    return NextResponse.json<ErrorResponse>(
-      { error: 'Configuração interna do servidor incompleta: URL base do N8N ausente.' },
-      { status: 500 }
-    );
-  }
-  if (!N8N_FIXED_ACCESS_TOKEN) {
-    console.error("[PROXY API] ERRO CRÍTICO: N8N_SERVER_ACCESS_TOKEN não está configurado nas variáveis de ambiente do servidor.");
-    return NextResponse.json<ErrorResponse>(
-      { error: 'Configuração interna do servidor incompleta: token de acesso ao N8N ausente.' },
-      { status: 500 }
-    );
-  }
+  console.log("====== [APP ROUTER - DB DELETE /api/produto/delete/[id]] Deletando produto do DB ======");
+  console.log("[APP ROUTER] ID do produto para deletar:", id);
 
+  // 1. Validação do ID
   if (!id) {
     return NextResponse.json<ErrorResponse>(
-      { error: 'O ID do produto é obrigatório' },
+      { error: 'O ID do produto é obrigatório na URL.' },
       { status: 400 }
     );
   }
 
-  // Construção da URL final para o N8N
-  const n8nWebhookUrl: string = `${N8N_WEBHOOK_URL_FROM_ENV}/produto/delete/${id}`;
-
   try {
-    const n8nResponse: Response = await fetch(n8nWebhookUrl, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        // 'User-Agent': 'MyNextJSApp/1.0 (Node.js fetch)', // Opcional
+    // 2. Operação de DELETE com Prisma
+    const deletedProduto = await prisma.produto.delete({
+      where: {
+        id: id, // 'id' deve ser o nome do campo identificador no seu modelo Produto no schema.prisma
       },
     });
 
-    let responseBody: any = null;
-    // Tenta ler o corpo apenas se não for 204 No Content
-    if (n8nResponse.status !== 204) {
-      try {
-        const contentType = n8nResponse.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          responseBody = await n8nResponse.json();
-        } else {
-          responseBody = await n8nResponse.text();
-        }
-      } catch (parseError) {
-        console.error('[PROXY API] Error parsing N8N response body:', parseError);
-        if (!(responseBody && typeof responseBody === 'string')) {
-            responseBody = await n8nResponse.text().catch(() => 'Corpo da resposta não pôde ser lido ou já consumido');
-        }
-      }
-    }
-
-    // Trata respostas de sucesso (200 OK ou 204 No Content)
-    if (n8nResponse.ok) { // .ok é true para status 200-299
-      if (n8nResponse.status === 204) {
-        return new NextResponse(null, { status: 204 });
-      }
-      return NextResponse.json(responseBody, { status: n8nResponse.status });
-    } else {
-      // Se for 403 Forbidden ou qualquer outro erro do N8N
-      console.error(`[PROXY API] N8N returned error status ${n8nResponse.status}:`, responseBody);
-      return NextResponse.json(
-        responseBody || { error: `N8N respondeu com status ${n8nResponse.status}`, details: `Status Text: ${n8nResponse.statusText}` },
-        { status: n8nResponse.status }
-      );
-    }
+    // Se chegou aqui, o produto foi deletado com sucesso.
+    // O Prisma retorna o objeto deletado.
+    console.log("[DB DELETE] Produto deletado com sucesso do banco de dados:", deletedProduto);
+    
+    // Você pode retornar o objeto deletado ou apenas uma mensagem de sucesso/status 204.
+    // Retornar o objeto deletado pode ser útil para o frontend confirmar.
+    return NextResponse.json(deletedProduto, { status: 200 });
+    // Alternativamente, para um DELETE, um status 204 No Content também é comum:
+    // return new NextResponse(null, { status: 204 });
 
   } catch (error: unknown) {
-    console.error('[PROXY API] Erro ao fazer proxy da requisição DELETE para o N8N (bloco catch):', error);
-    let errorMessage = 'Erro desconhecido ao tentar contatar o serviço N8N.';
-    if (error instanceof TypeError && error.message.includes('fetch failed')) {
-        errorMessage = `Erro de rede ao tentar acessar N8N: ${error.message}. Verifique a URL e conectividade do servidor.`;
-    } else if (error instanceof TypeError) {
-        errorMessage = `TypeError: ${error.message}. URL de input: ${(error as any).input || n8nWebhookUrl}`;
+    let errorMessage = 'Erro desconhecido ao deletar produto do banco de dados.';
+    let errorStatus = 500;
+
+    console.error('[DB DELETE] Erro ao deletar produto:', error);
+
+    // Tratar erros específicos do Prisma, como "Registro não encontrado"
+    if (error instanceof Error && 'code' in error) {
+        const prismaError = error as { code?: string; meta?: any; message: string, name?: string };
+        // P2025 é o código do Prisma para "Record to delete not found"
+        if (prismaError.code === 'P2025' || prismaError.name === 'PrismaClientKnownRequestError' && (prismaError.meta as any)?.cause === 'Record to delete does not exist.') {
+            errorMessage = `Produto com ID "${id}" não encontrado para deleção.`;
+            errorStatus = 404; // Not Found
+        } else {
+            errorMessage = prismaError.message; // Usa a mensagem de erro do Prisma
+        }
     } else if (error instanceof Error) {
       errorMessage = error.message;
     }
+
     return NextResponse.json<ErrorResponse>(
       {
-        error: 'Falha ao fazer proxy da requisição para o webhook N8N',
+        error: 'Falha ao deletar produto.',
         details: errorMessage,
       },
-      { status: 502 } // Bad Gateway
+      { status: errorStatus }
     );
   }
+
 }

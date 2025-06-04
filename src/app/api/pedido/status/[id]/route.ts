@@ -32,38 +32,36 @@ export async function PUT(
 
   let requestBody;
   try {
-    requestBody = await request.json(); // Espera um corpo como { "quantidade": number }
-    if (requestBody.quantidade === undefined || typeof requestBody.quantidade !== 'number') {
+    requestBody = await request.json(); 
+    if (requestBody.status === undefined || typeof requestBody.status !== 'string') {
       return NextResponse.json<ErrorResponse>(
-        { error: 'Corpo da requisição inválido: "quantidade" é obrigatória e deve ser um número.' },
+        { error: 'Corpo da requisição inválido: "status" é obrigatória e deve ser um texto.' },
         { status: 400 }
       );
     }
   } catch (e) {
-    console.error('[API PUT /produtos/[id]] Erro ao parsear corpo da requisição JSON:', e);
+    console.error('[API PUT /pedido/status/[id]] Erro ao parsear corpo da requisição JSON:', e);
     return NextResponse.json<ErrorResponse>(
       { error: 'Falha ao parsear o corpo da requisição JSON. Certifique-se de enviar um JSON válido.' },
       { status: 400 }
     );
   }
 
-  const { quantidade } = requestBody; // Extrai a quantidade do corpo da requisição
+  const { status } = requestBody; // Extrai a quantidade do corpo da requisição
 
   try {
     // Operação de UPDATE com Prisma
-    const updatedProduto = await prisma.produto.update({
+    const updatedPedido = await prisma.pedido.update({
       where: {
         id: id, // 'id' deve ser o nome do campo identificador no seu modelo Produto
       },
       data: {
-        quantidade: quantidade, // Campo a ser atualizado
-        // Se você precisar atualizar outros campos, adicione-os aqui
-        // Por exemplo: nome: requestBody.nome (se enviado no corpo)
+        status: status, 
       },
     });
 
-    console.log("[DB UPDATE] Produto atualizado com sucesso no banco de dados:", updatedProduto);
-    return NextResponse.json(updatedProduto, { status: 200 });
+    console.log("[DB UPDATE] Produto atualizado com sucesso no banco de dados:", updatedPedido);
+    return NextResponse.json(updatedPedido, { status: 200 });
 
   } catch (error: unknown) {
     let errorMessage = 'Erro desconhecido ao atualizar produto no banco de dados.';

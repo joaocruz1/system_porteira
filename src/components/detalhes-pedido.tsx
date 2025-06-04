@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Package, User, DollarSign, CheckCircle, XCircle, Clock, Truck } from "lucide-react"
+import { ArrowLeft, Package, User, DollarSign, CheckCircle, XCircle, Clock, Truck, Download } from "lucide-react"
 import { useEstoque } from "@/components/estoque-context"
 
 interface DetalhesPedidoProps {
@@ -79,6 +79,26 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
 
   const estoqueDisponivel = verificarDisponibilidadeEstoque()
 
+  const baixarImagem = async () => {
+    if (!pedido.logo) return
+
+    try {
+      const response = await fetch(pedido.logo)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `pedido-${pedido.id}-logo.jpg`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("Erro ao baixar a imagem:", error)
+      alert("Erro ao baixar a imagem. Verifique se a URL está correta.")
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -100,6 +120,32 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
           </Badge>
         </div>
       </div>
+
+      {pedido.logo && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">Imagem do Pedido</CardTitle>
+              <Button variant="outline" size="sm" onClick={baixarImagem}>
+                <Download className="mr-2 h-4 w-4" />
+                Baixar Imagem
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <div className="relative w-full max-w-md h-64 rounded-lg overflow-hidden border">
+              <img
+                src={pedido.logo || "/placeholder.svg"}
+                alt="Logo do Pedido"
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  e.currentTarget.src = "/placeholder.svg?height=256&width=256"
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      ) }
 
       {/* Status Card */}
       <Card className={`border-2 ${getStatusColor(pedido.status)}`}>
@@ -144,8 +190,12 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
               <p className="font-semibold">{new Date(pedido.dataPedido).toLocaleDateString("pt-BR")}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Horário</p>
-              <p className="font-semibold">{new Date(pedido.dataPedido).toLocaleTimeString("pt-BR")}</p>
+              <p className="text-sm text-muted-foreground">Telefone</p>
+              <p className="font-semibold">{pedido.cliente_telefone}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Email</p>
+              <p className="font-semibold">{pedido.cliente_email}</p>
             </div>
           </CardContent>
         </Card>
@@ -186,7 +236,11 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
           <CardContent className="space-y-4">
             <div>
               <p className="text-sm text-muted-foreground">Tipo</p>
-              <p className="font-semibold">Retirada no Local</p>
+              <p className="font-semibold">Entrega Domicilio</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Endereço de Entrega</p>
+              <p className="font-semibold">{pedido.endereco}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Previsão</p>
