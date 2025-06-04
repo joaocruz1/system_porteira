@@ -542,13 +542,11 @@ export function GestaoEstoque() {
                     return (
                       <TableRow key={produto.id}>
                         <TableCell>
-                          
-                         <Image 
-                          src="/placeholder.svg"
-                          alt={produto.nome}
-                          width={100}
-                          height={100}
-                          />
+                         <ImageGallery
+                          images={produto.image ? [produto.image] : []} // ImageGallery espera um array de strings
+                          productName={produto.nome}
+                          editable={false} // Importante: para modo de visualização simples
+                        />
                         </TableCell>
                         <TableCell className="font-medium">{produto.nome}</TableCell>
                         <TableCell>

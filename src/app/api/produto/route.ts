@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       
       await writeFile(filePath, buffer);
       console.log(`[API POST /produto] Arquivo salvo em: ${filePath}`);
-      imageUrl = `/uploads/${filename}`; 
+      imageUrl = `/uploads/produtos/${filename}`; 
     } else {
       console.log("[API POST /produto] Nenhum arquivo de imagem (imageFile) foi recebido ou processado.");
     }

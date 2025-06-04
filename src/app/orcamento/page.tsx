@@ -37,7 +37,7 @@ import { METALASER_CATALOG, CATEGORIES, type CatalogItem } from "@/lib/metal-cat
 import Image from "next/image"
 // Adicionar import do novo componente no topo do arquivo
 import { CustomProductForm } from "@/components/custom-product-form"
-import { json } from "stream/consumers"
+import { toast } from "sonner"
 
 interface CustomQuoteItem {
   id: string
@@ -207,36 +207,26 @@ const sendQuote = async () => {
 
   const formData = new FormData();
 
-  // 1. Adicionar dados do cliente (como string JSON)
-  formData.append('customerData', JSON.stringify(customerData));
 
-  // 2. Preparar e adicionar itens do orçamento (como string JSON, sem os Files)
-  // E extrair o primeiro arquivo de logo, se houver
+  formData.append('customerData', JSON.stringify(customerData));
   let mainLogoFile: File | undefined = undefined;
 
   const processedQuoteItems = quoteItems.map(item => {
-    // Se você quiser armazenar informações sobre qual item tinha o logo,
-    // você pode adicionar um campo como 'logoFileNamePlaceholder' no 'processedItem'.
-    // Por enquanto, apenas pegamos o primeiro arquivo de logo encontrado.
+
     if (item.logoType === "image" && item.logoImage && !mainLogoFile) {
       mainLogoFile = item.logoImage;
     }
-    // Criar um novo objeto sem a propriedade 'logoImage' para stringificação
+
     const { logoImage, ...itemWithoutFile } = item;
     return itemWithoutFile;
   });
 
   formData.append('quoteItems', JSON.stringify(processedQuoteItems));
 
-  // 3. Adicionar o arquivo de logo principal, se existir
   if (mainLogoFile) {
     formData.append('logoFile', mainLogoFile);
   }
 
-  // Debug: verificar o conteúdo do FormData antes de enviar
-  // for (let [key, value] of formData.entries()) {
-  //   console.log("FormData:", key, value);
-  // }
 
   try {
     const response = await fetch("/api/pedido", {
@@ -250,10 +240,7 @@ const sendQuote = async () => {
       alert(`Ocorreu um erro ao enviar o orçamento: ${errorResult.details || errorResult.error || response.statusText}. Por favor, tente novamente mais tarde.`);
       return;
     }
-    
-    // Se a resposta foi OK (2xx), então o alerta de sucesso original pode ser usado
-    // O alerta "Orcamento Enviado com sucesso" que estava comentado pode ser ativado aqui.
-    alert("Orçamento enviado com sucesso! Entraremos em contato em breve.");
+    toast.success("Orçamento enviado com sucesso! Entraremos em contato em breve.");
 
     // Reset form
     setCustomerData({
@@ -693,6 +680,7 @@ const sendQuote = async () => {
                       onChange={(e) => setCustomerData({ ...customerData, name: e.target.value || "" })}
                       placeholder="Seu nome completo"
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      required
                     />
                   </div>
                   <div>
@@ -706,6 +694,7 @@ const sendQuote = async () => {
                       onChange={(e) => setCustomerData({ ...customerData, email: e.target.value || "" })}
                       placeholder="seu@email.com"
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      required
                     />
                   </div>
                   <div>
@@ -714,10 +703,12 @@ const sendQuote = async () => {
                     </Label>
                     <Input
                       id="phone"
+                      type="number"
                       value={customerData.phone}
                       onChange={(e) => setCustomerData({ ...customerData, phone: e.target.value || "" })}
                       placeholder="(35) 99999-9999"
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      required
                     />
                   </div>
                   <div>
@@ -744,6 +735,7 @@ const sendQuote = async () => {
                       placeholder="Rua, número, bairro, cidade, estado e CEP"
                       rows={3}
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      required
                     />
                   </div>
                   <Button onClick={sendQuote} className="w-full bg-blue-600 hover:bg-blue-700 text-white">

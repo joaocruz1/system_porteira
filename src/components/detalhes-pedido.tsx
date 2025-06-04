@@ -145,7 +145,7 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
             </div>
           </CardContent>
         </Card>
-      )}
+      ) }
 
       {/* Status Card */}
       <Card className={`border-2 ${getStatusColor(pedido.status)}`}>
@@ -192,6 +192,10 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
             <div>
               <p className="text-sm text-muted-foreground">Telefone</p>
               <p className="font-semibold">{pedido.cliente_telefone}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Email</p>
+              <p className="font-semibold">{pedido.cliente_email}</p>
             </div>
           </CardContent>
         </Card>

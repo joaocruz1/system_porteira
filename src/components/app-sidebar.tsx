@@ -37,11 +37,6 @@ const menuItems = [
     icon: BarChart3,
     component: "relatorios",
   },
-  {
-    title: "Orçamento Cliente",
-    icon: Calculator,
-    component: "orcamento-cliente",
-  },
 ]
 
 export function AppSidebar() {

@@ -76,8 +76,6 @@ export async function POST(request: NextRequest) {
         }
     } else {
         console.warn("Nenhum item no orçamento para cálculo do total. Total será 0.");
-        // Se quoteItems for essencial para o pedido, talvez devesse retornar um erro aqui.
-        // return new Response(JSON.stringify({ error: "Orçamento não contém itens." }), { status: 400 });
     }
 
     let logoPathForDb: string = "caminho/para/logo_padrao.png";
@@ -103,11 +101,6 @@ export async function POST(request: NextRequest) {
       status: "pendente",
       total: new Decimal(totalCalculado),
       logo: logoPathForDb,
-      // Se quoteItems ou customerData forem null após o parse,
-      // o JavaScript null será passado para o Prisma, resultando em JSON null no DB.
-      // Se você preferir um array/objeto vazio em vez de JSON null:
-      // item: quoteItems || [],
-      // cliente_infos: customerData || {},
       item: quoteItems,
       cliente_infos: customerData,
     };

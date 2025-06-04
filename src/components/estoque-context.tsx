@@ -25,11 +25,13 @@ export interface Pedido {
   cliente: string // No backend é cliente_infos (JSON com mais detalhes)
   endereco : string
   cliente_telefone: string
+  cliente_email: string
   logo: string
   produtos: Array<{ // No backend é item (JSON com estrutura de QuoteItem)
     produtoId: string
     nome: string
     quantidade: number
+    logotype: string
     preco: number
   }>
   total: number // Considere se este deve ser Decimal
@@ -116,10 +118,14 @@ export function EstoqueProvider({ children, initialProdutos, initialPedidos }: E
           let clienteNome = "N/A";
           let clienteEndereco = "N/A";
           let clienteTelefone = "N/A";
+          let clienteEmail = "N/A";
+
+
           if (apiPedido.cliente_infos) {
             clienteNome = typeof apiPedido.cliente_infos.name === 'string' ? apiPedido.cliente_infos.name : JSON.stringify(apiPedido.cliente_infos);
             clienteEndereco = typeof apiPedido.cliente_infos.address === 'string' ? apiPedido.cliente_infos.address : JSON.stringify(apiPedido.cliente_infos);
             clienteTelefone = typeof apiPedido.cliente_infos.phone === 'string' ? apiPedido.cliente_infos.phone : JSON.stringify(apiPedido.cliente_infos);
+            clienteEmail = typeof apiPedido.cliente_infos.email === 'string' ? apiPedido.cliente_infos.email : JSON.stringify(apiPedido.cliente);
           }
 
           let produtosPedido: Pedido['produtos'] = [];
@@ -128,6 +134,7 @@ export function EstoqueProvider({ children, initialProdutos, initialPedidos }: E
               produtoId: orderItem.product?.id || orderItem.custom?.id || 'N/A',
               nome: orderItem.product?.name || orderItem.custom?.productName || 'Produto Desconhecido',
               quantidade: orderItem.quantity || 0,
+              LogoType : orderItem.logoType || "",
               preco: orderItem.unitPrice || 0,
             }));
           }
@@ -147,14 +154,17 @@ export function EstoqueProvider({ children, initialProdutos, initialPedidos }: E
             cliente: clienteNome,
             endereco : clienteEndereco,
             cliente_telefone: clienteTelefone,
+            cliente_email: clienteEmail,
             logo : apiPedido.logo || "caminho/padrao/ou/string_vazia_se_permitido.png", // Pegue o logo da API
             produtos: produtosPedido,
             total: Number(apiPedido.total) || 0,
             status: statusPedido,
             dataPedido: apiPedido.data_pedido ? new Date(apiPedido.data_pedido).toLocaleDateString('pt-BR') : 'Data Inválida',
+
           };
         });
         setPedidos(mappedPedidos);
+        
         console.log("CTX: Pedidos carregados e mapeados da API:", mappedPedidos.length);
       }
     } catch (err) {
@@ -297,14 +307,10 @@ const atualizarQuantidade = async (id: string, quantidade: number) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Adaptar pedidoDataPayload para o formato que sua API de /api/pedido (POST) espera.
-      // Se ela espera FormData com quoteItems, customerData, logoFile, você precisará construir isso.
-      // O exemplo abaixo assume que a API espera um JSON no formato da interface Pedido do contexto.
-      // Isso provavelmente precisará de ajuste para corresponder à API de pedido que criamos antes, que usa FormData.
       const response = await fetch(`${API_BASE_URL}/pedido`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" }, // Mudar se enviar FormData
-        body: JSON.stringify(pedidoDataPayload), // Mudar se enviar FormData
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(pedidoDataPayload), 
       });
 
       if (!response.ok) {
@@ -329,12 +335,9 @@ const atualizarQuantidade = async (id: string, quantidade: number) => {
     try {
       // Ajuste o endpoint e o corpo da requisição se necessário para sua API
       const response = await fetch(`${API_BASE_URL}/pedido/status/${id}`, { 
-        method: "PATCH", // ou PUT
+        method: "PUT", 
         headers: { "Content-Type": "application/json" },
-        // Envie o status no formato que sua API de backend espera.
-        // Se o backend espera um boolean para o campo 'status' no modelo Prisma:
-        // body: JSON.stringify({ status: status === 'concluido' }), 
-        body: JSON.stringify({ status }), // Se a API aceitar o status como string diretamente
+        body: JSON.stringify({ status }), 
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: `Erro ${response.status} ao atualizar status: ${response.statusText}` }));
