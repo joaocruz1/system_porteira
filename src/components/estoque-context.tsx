@@ -293,41 +293,45 @@ const atualizarQuantidade = async (id: string, quantidade: number) => {
   }
 };
 
-  const atualizarProdutoExistente = async (id: string, novaQuantidade: number) => {
+const atualizarProdutoExistente = async (id: string, novaQuantidade: number) => {
     const produtoAtual = produtos.find(p => p.id === id);
     if (!produtoAtual) {
       toast.error("Produto não encontrado para atualização.");
       return;
     }
-    const quantidadeTotal = produtoAtual.quantidade + novaQuantidade; // Assumindo que é para SOMAR
+    const quantidadeTotal = produtoAtual.quantidade + novaQuantidade; 
     await atualizarQuantidade(id, quantidadeTotal);
   };
 
-  const criarPedido = async (pedidoDataPayload: Omit<Pedido, "id">) => {
+const criarPedido = async (pedidoDataPayload: Omit<Pedido, "id">) => {
     setIsLoading(true);
     setError(null);
-    try {
-      const response = await fetch(`${API_BASE_URL}/pedido`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify(pedidoDataPayload), 
-      });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: `Erro ${response.status} ao criar pedido: ${response.statusText}` }));
-        throw new Error(errorData.error || errorData.message || `Erro ao criar pedido: ${response.statusText}`);
-      }
-      toast.success("Pedido criado com sucesso!");
-      refreshData();
-    } catch (err: unknown) {
-      console.error("Erro ao criar pedido:", err);
-      const message = (err instanceof Error) ? err.message : "Erro desconhecido ao criar pedido.";
-      setError(message);
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
+  const formData = new FormData();
+  
+
+  formData.append('customerData', JSON.stringify(pedidoDataPayload));
+  formData.append('quoteItems', JSON.stringify(pedidoDataPayload.produtos));
+  
+  try {
+    const response = await fetch("/api/pedido", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorResult = await response.json().catch(() => ({ error: "Erro desconhecido", details: response.statusText }));
+      alert(`Ocorreu um erro ao enviar o orçamento: ${errorResult.details || errorResult.error || response.statusText}. Por favor, tente novamente mais tarde.`);
+      return;
     }
-  };
+    toast.success("Orçamento enviado com sucesso! Entraremos em contato em breve.");
+  }catch (err: unknown) {
+    console.error("Erro ao criar pedido:", err);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const atualizarStatusPedido = async (id: string, status: Pedido["status"]) => {
     setIsLoading(true);

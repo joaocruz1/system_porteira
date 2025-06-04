@@ -1,14 +1,27 @@
-"use client"
+// src/components/gestao-vendas.tsx
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
+import type React from "react";
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -17,134 +30,239 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, ShoppingCart, CheckCircle, XCircle, Clock } from "lucide-react"
-import { useEstoque } from "@/components/estoque-context"
-import { DetalhesPedido } from "@/components/detalhes-pedido"
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, ShoppingCart, CheckCircle, XCircle, Clock } from "lucide-react";
+import { useEstoque, Pedido, Produto } from "@/components/estoque-context"; // Importe Pedido e Produto
+import { DetalhesPedido } from "@/components/detalhes-pedido";
+
+// Interface para os itens dentro do estado novoPedido
+interface NovoPedidoProduto {
+  produtoId: string;
+  nome: string;
+  quantidade: number;
+  unitPrice: number; // Preço unitário do produto base
+  totalPrice: number; // quantidade * unitPrice (+ setupFeeItem se houver)
+  logotype?: string; // Adicionado para consistência com o que a API pode esperar por item
+  // logoText?: string; // Se precisar de texto específico por item
+}
+
+// Interface para o payload que será enviado para criarPedido
+// Isso ajuda a garantir que todos os campos obrigatórios de Omit<Pedido, "id"> sejam incluídos
+interface PedidoPayload extends Omit<Pedido, "id" | "produtos"> {
+  produtos: Array<{ // Esta é a estrutura que a API (via contexto) espera para os itens
+    produtoId: string;
+    nome: string;
+    quantidade: number;
+    preco: number; // Mapeado de unitPrice
+    logotype: string;
+    // logoText?: string; // Se for enviar
+  }>;
+}
+
 
 export function GestaoVendas() {
-  const { produtos, pedidos, criarPedido, atualizarStatusPedido, darBaixaPedido } = useEstoque()
-  const [dialogAberto, setDialogAberto] = useState(false)
-  const [pedidoSelecionado, setPedidoSelecionado] = useState<string | null>(null)
-  const [novoPedido, setNovoPedido] = useState({
+  const {
+    produtos: produtosDoEstoque, // Renomeado para evitar conflito com novoPedido.produtos
+    pedidos,
+    criarPedido,
+    atualizarStatusPedido,
+    darBaixaPedido,
+  } = useEstoque();
+
+  const [dialogAberto, setDialogAberto] = useState(false);
+  const [pedidoSelecionado, setPedidoSelecionado] = useState<string | null>(
+    null
+  );
+
+  const initialNovoPedidoState = {
     cliente: "",
     logo: "",
     endereco: "",
     cliente_telefone: "",
-    produtos: [] as Array<{
-      produtoId: string
-      nome: string
-      quantidade: number
-      preco: number
-    }>,
+    cliente_email: "",
+    produtos: [] as NovoPedidoProduto[], // Usando a interface interna
     total: 0,
     status: "pendente" as const,
     dataPedido: new Date().toISOString().split("T")[0],
-  })
-  const [produtoSelecionado, setProdutoSelecionado] = useState("")
-  const [quantidadeSelecionada, setQuantidadeSelecionada] = useState(1)
+    // logotype: "text", // Se houver um logotype geral para o pedido. Ajuste a interface Pedido no contexto se necessário.
+  };
+
+  const [novoPedido, setNovoPedido] = useState(initialNovoPedidoState);
+  const [produtoSelecionadoId, setProdutoSelecionadoId] = useState("");
+  const [quantidadeSelecionada, setQuantidadeSelecionada] = useState(1);
+
+  const calcularTotalItem = (
+    unitPrice: number,
+    quantidade: number,
+    setupFeeItem: number = 0 // Se você tiver taxa de setup por item
+  ): number => {
+    return unitPrice * quantidade + setupFeeItem;
+  };
+
+  const calcularTotalPedido = (
+    produtosNoPedido: NovoPedidoProduto[]
+  ): number => {
+    return produtosNoPedido.reduce((acc, p) => acc + p.totalPrice, 0);
+    // Se houver uma taxa de setup GERAL para o pedido, adicione aqui:
+    // + (novoPedido.algumaTaxaDeSetupGeral || 0);
+  };
 
   const adicionarProdutoAoPedido = () => {
-    const produto = produtos.find((p) => p.id === produtoSelecionado)
-    if (produto && quantidadeSelecionada > 0) {
-      const produtoExistente = novoPedido.produtos.find((p) => p.produtoId === produto.id)
+    const produtoBase = produtosDoEstoque.find(
+      (p) => p.id === produtoSelecionadoId
+    );
+    if (produtoBase && quantidadeSelecionada > 0) {
+      const { preco: unitPriceDoProdutoBase } = produtoBase;
+      const setupFeeParaEsteItem = 0; // Defina se houver taxa de setup por item
 
-      if (produtoExistente) {
-        const produtosAtualizados = novoPedido.produtos.map((p) =>
-          p.produtoId === produto.id ? { ...p, quantidade: p.quantidade + quantidadeSelecionada } : p,
-        )
-        setNovoPedido({
-          ...novoPedido,
-          produtos: produtosAtualizados,
-          total: produtosAtualizados.reduce((acc, p) => acc + p.quantidade * p.preco, 0),
-        })
+      const produtoExistenteIndex = novoPedido.produtos.findIndex(
+        (p) => p.produtoId === produtoBase.id
+      );
+
+      let produtosAtualizados: NovoPedidoProduto[];
+
+      if (produtoExistenteIndex > -1) {
+        produtosAtualizados = novoPedido.produtos.map((p, index) => {
+          if (index === produtoExistenteIndex) {
+            const novaQuantidade = p.quantidade + quantidadeSelecionada;
+            return {
+              ...p,
+              quantidade: novaQuantidade,
+              totalPrice: calcularTotalItem(
+                p.unitPrice,
+                novaQuantidade,
+                (p as any).setupFeeItem || setupFeeParaEsteItem // Mantém setup fee do item se existir
+              ),
+            };
+          }
+          return p;
+        });
       } else {
-        const novosProdutos = [
-          ...novoPedido.produtos,
-          {
-            produtoId: produto.id,
-            nome: produto.nome,
-            quantidade: quantidadeSelecionada,
-            preco: produto.preco,
-          },
-        ]
-        setNovoPedido({
-          ...novoPedido,
-          produtos: novosProdutos,
-          total: novosProdutos.reduce((acc, p) => acc + p.quantidade * p.preco, 0),
-        })
+        const novoItem: NovoPedidoProduto = {
+          produtoId: produtoBase.id,
+          nome: produtoBase.nome,
+          quantidade: quantidadeSelecionada,
+          unitPrice: unitPriceDoProdutoBase,
+          totalPrice: calcularTotalItem(
+            unitPriceDoProdutoBase,
+            quantidadeSelecionada,
+            setupFeeParaEsteItem
+          ),
+          logotype: "text", // Defina um padrão ou pegue de algum lugar
+          // setupFeeItem: setupFeeParaEsteItem, // Se rastrear por item
+        };
+        produtosAtualizados = [...novoPedido.produtos, novoItem];
       }
 
-      setProdutoSelecionado("")
-      setQuantidadeSelecionada(1)
+      setNovoPedido((prev) => ({
+        ...prev,
+        produtos: produtosAtualizados,
+        total: calcularTotalPedido(produtosAtualizados),
+      }));
+
+      setProdutoSelecionadoId("");
+      setQuantidadeSelecionada(1);
     }
-  }
+  };
 
   const removerProdutoDoPedido = (produtoId: string) => {
-    const produtosFiltrados = novoPedido.produtos.filter((p) => p.produtoId !== produtoId)
-    setNovoPedido({
-      ...novoPedido,
+    const produtosFiltrados = novoPedido.produtos.filter(
+      (p) => p.produtoId !== produtoId
+    );
+    setNovoPedido((prev) => ({
+      ...prev,
       produtos: produtosFiltrados,
-      total: produtosFiltrados.reduce((acc, p) => acc + p.quantidade * p.preco, 0),
-    })
-  }
+      total: calcularTotalPedido(produtosFiltrados),
+    }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (novoPedido.cliente && novoPedido.produtos.length > 0) {
-      criarPedido(novoPedido)
-      setDialogAberto(false)
-      setNovoPedido({
-        cliente: "",
-        logo: "",
-        endereco: "",
-        cliente_telefone: "",
-        produtos: [],
-        total: 0,
-        status: "pendente",
-        dataPedido: new Date().toISOString().split("T")[0],
-      })
+      // Mapear os produtos do estado novoPedido (NovoPedidoProduto)
+      // para a estrutura esperada pela interface Pedido['produtos'] do contexto
+      const produtosParaAPIContexto = novoPedido.produtos.map((item) => ({
+        produtoId: item.produtoId,
+        nome: item.nome,
+        quantidade: item.quantidade,
+        preco: item.unitPrice, // Mapeando unitPrice para preco
+        logotype: item.logotype || "text", // Pega o logotype do item ou usa padrão
+        // logoText: item.logoText || "", // Se você tiver logoText no NovoPedidoProduto
+      }));
+      
+      // Este é o objeto que será enviado para criarPedido,
+      // que por sua vez construirá o FormData
+      const pedidoParaContexto: Omit<Pedido, "id"> = {
+        cliente: novoPedido.cliente,
+        logo: novoPedido.logo, // URL da imagem principal do pedido
+        endereco: novoPedido.endereco,
+        cliente_telefone: novoPedido.cliente_telefone,
+        cliente_email: novoPedido.cliente_email,
+        produtos: produtosParaAPIContexto, // Array de produtos formatado
+        total: novoPedido.total, // Total geral já calculado
+        status: novoPedido.status,
+        dataPedido: novoPedido.dataPedido,
+        // logotype: novoPedido.logotype, // Se a interface Pedido no contexto tiver logotype no nível raiz
+      };
+
+      criarPedido(pedidoParaContexto);
+      setDialogAberto(false);
+      setNovoPedido(initialNovoPedidoState);
     }
-  }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "concluido":
-        return <CheckCircle className="h-4 w-4 text-green-600" />
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
       case "cancelado":
-        return <XCircle className="h-4 w-4 text-red-600" />
+        return <XCircle className="h-4 w-4 text-red-600" />;
       case "processando":
-        return <Clock className="h-4 w-4 text-blue-600" />
+        return <Clock className="h-4 w-4 text-blue-600" />;
       default:
-        return <Clock className="h-4 w-4 text-yellow-600" />
+        return <Clock className="h-4 w-4 text-yellow-600" />;
     }
-  }
+  };
 
   const getStatusVariant = (status: string) => {
     switch (status) {
       case "concluido":
-        return "default" as const
+        return "default" as const;
       case "cancelado":
-        return "destructive" as const
+        return "destructive" as const;
       case "processando":
-        return "secondary" as const
+        return "secondary" as const;
       default:
-        return "outline" as const
+        return "outline" as const;
     }
-  }
+  };
 
-  // Se um pedido está selecionado, mostrar os detalhes
   if (pedidoSelecionado) {
-    return <DetalhesPedido pedidoId={pedidoSelecionado} onVoltar={() => setPedidoSelecionado(null)} />
+    return (
+      <DetalhesPedido
+        pedidoId={pedidoSelecionado}
+        onVoltar={() => setPedidoSelecionado(null)}
+      />
+    );
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Vendas e Pedidos</h2>
-          <p className="text-muted-foreground">Gerencie pedidos e controle as vendas</p>
+          <h2 className="text-2xl font-bold tracking-tight">
+            Vendas e Pedidos
+          </h2>
+          <p className="text-muted-foreground">
+            Gerencie pedidos e controle as vendas
+          </p>
         </div>
 
         <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
@@ -157,7 +275,9 @@ export function GestaoVendas() {
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Criar Novo Pedido</DialogTitle>
-              <DialogDescription>Adicione produtos ao pedido e finalize a venda.</DialogDescription>
+              <DialogDescription>
+                Adicione produtos ao pedido e finalize a venda.
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
@@ -168,24 +288,96 @@ export function GestaoVendas() {
                   <Input
                     id="cliente"
                     value={novoPedido.cliente}
-                    onChange={(e) => setNovoPedido({ ...novoPedido, cliente: e.target.value })}
+                    onChange={(e) =>
+                      setNovoPedido({ ...novoPedido, cliente: e.target.value })
+                    }
                     className="col-span-3"
                     placeholder="Nome do cliente"
                     required
                   />
                 </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="endereco" className="text-right">
+                    Endereço
+                  </Label>
+                  <Input
+                    id="endereco"
+                    value={novoPedido.endereco}
+                    onChange={(e) =>
+                      setNovoPedido({ ...novoPedido, endereco: e.target.value })
+                    }
+                    className="col-span-3"
+                    placeholder="Endereço do cliente"
+                    required 
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="cliente_telefone" className="text-right">
+                    Telefone
+                  </Label>
+                  <Input
+                    id="cliente_telefone"
+                    value={novoPedido.cliente_telefone}
+                    onChange={(e) =>
+                      setNovoPedido({ ...novoPedido, cliente_telefone: e.target.value })
+                    }
+                    className="col-span-3"
+                    placeholder="(XX) XXXXX-XXXX"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="cliente_email" className="text-right">
+                    Email Cliente
+                  </Label>
+                  <Input
+                    id="cliente_email"
+                    type="email"
+                    value={novoPedido.cliente_email}
+                    onChange={(e) =>
+                      setNovoPedido({
+                        ...novoPedido,
+                        cliente_email: e.target.value,
+                      })
+                    }
+                    className="col-span-3"
+                    placeholder="email@example.com"
+                    required
+                  />
+                </div>
+                {/* Campo para URL do Logo (opcional) */}
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="logoUrl" className="text-right">
+                    URL da Logo
+                  </Label>
+                  <Input
+                    id="logoUrl"
+                    value={novoPedido.logo}
+                    onChange={(e) =>
+                      setNovoPedido({ ...novoPedido, logo: e.target.value })
+                    }
+                    className="col-span-3"
+                    placeholder="https://exemplo.com/logo.png (opcional)"
+                  />
+                </div>
+
 
                 <div className="border rounded-lg p-4">
                   <h4 className="font-medium mb-3">Adicionar Produtos</h4>
                   <div className="flex gap-2 mb-3">
-                    <Select value={produtoSelecionado} onValueChange={setProdutoSelecionado}>
+                    <Select
+                      value={produtoSelecionadoId}
+                      onValueChange={setProdutoSelecionadoId}
+                    >
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Selecione um produto" />
                       </SelectTrigger>
                       <SelectContent>
-                        {produtos.map((produto) => (
+                        {produtosDoEstoque.map((produto) => (
                           <SelectItem key={produto.id} value={produto.id}>
-                            {produto.nome} - R$ {produto.preco.toFixed(2)} ({produto.quantidade} disponível)
+                            {produto.nome} - R${" "}
+                            {produto.preco.toFixed(2)} ({produto.quantidade}{" "}
+                            disponível)
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -194,7 +386,11 @@ export function GestaoVendas() {
                       type="number"
                       min="1"
                       value={quantidadeSelecionada}
-                      onChange={(e) => setQuantidadeSelecionada(Number.parseInt(e.target.value) || 1)}
+                      onChange={(e) =>
+                        setQuantidadeSelecionada(
+                          Number.parseInt(e.target.value) || 1
+                        )
+                      }
                       className="w-20"
                     />
                     <Button type="button" onClick={adicionarProdutoAoPedido}>
@@ -206,30 +402,43 @@ export function GestaoVendas() {
                     <div className="space-y-2">
                       <h5 className="font-medium">Produtos no Pedido:</h5>
                       {novoPedido.produtos.map((produto, index) => (
-                        <div key={index} className="flex items-center justify-between bg-muted p-2 rounded">
-                          <span>
-                            {produto.nome} x {produto.quantidade}
-                          </span>
+                        <div
+                          key={index}
+                          className="flex items-center justify-between bg-muted p-2 rounded"
+                        >
+                          <div>
+                            <p>{produto.nome} x {produto.quantidade}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Unit: R$ {produto.unitPrice.toFixed(2)}
+                            </p>
+                          </div>
                           <div className="flex items-center gap-2">
-                            <span>R$ {(produto.quantidade * produto.preco).toFixed(2)}</span>
+                            <span>R$ {produto.totalPrice.toFixed(2)}</span>
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
-                              onClick={() => removerProdutoDoPedido(produto.produtoId)}
+                              onClick={() =>
+                                removerProdutoDoPedido(produto.produtoId)
+                              }
                             >
                               Remover
                             </Button>
                           </div>
                         </div>
                       ))}
-                      <div className="text-right font-bold">Total: R$ {novoPedido.total.toFixed(2)}</div>
+                      <div className="text-right font-bold">
+                        Total Geral: R$ {novoPedido.total.toFixed(2)}
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" disabled={novoPedido.produtos.length === 0}>
+                <Button
+                  type="submit"
+                  disabled={novoPedido.produtos.length === 0}
+                >
                   Criar Pedido
                 </Button>
               </DialogFooter>
@@ -250,7 +459,6 @@ export function GestaoVendas() {
           <Table>
             <TableHeader>
               <TableRow>
-
                 <TableHead>Cliente</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Produtos</TableHead>
@@ -263,7 +471,9 @@ export function GestaoVendas() {
               {pedidos.map((pedido) => (
                 <TableRow key={pedido.id}>
                   <TableCell>{pedido.cliente}</TableCell>
-                  <TableCell>{new Date(pedido.dataPedido).toLocaleDateString("pt-BR")}</TableCell>
+                  <TableCell>
+                    {new Date(pedido.dataPedido).toLocaleDateString("pt-BR")}
+                  </TableCell>
                   <TableCell>
                     <div className="text-sm">
                       {pedido.produtos.map((p, i) => (
@@ -275,39 +485,56 @@ export function GestaoVendas() {
                   </TableCell>
                   <TableCell>R$ {pedido.total.toFixed(2)}</TableCell>
                   <TableCell>
-                    <Badge variant={getStatusVariant(pedido.status)} className="flex items-center gap-1 w-fit">
+                    <Badge
+                      variant={getStatusVariant(pedido.status)}
+                      className="flex items-center gap-1 w-fit"
+                    >
                       {getStatusIcon(pedido.status)}
                       {pedido.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setPedidoSelecionado(pedido.id)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPedidoSelecionado(pedido.id)}
+                      >
                         Ver Detalhes
                       </Button>
                       {pedido.status === "pendente" && (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => atualizarStatusPedido(pedido.id, "processando")}
+                          onClick={() =>
+                            atualizarStatusPedido(pedido.id, "processando")
+                          }
                         >
                           Processar
                         </Button>
                       )}
-                      {(pedido.status === "pendente" || pedido.status === "processando") && (
-                        <Button variant="default" size="sm" onClick={() => darBaixaPedido(pedido.id)}>
+                      {(pedido.status === "pendente" ||
+                        pedido.status === "processando") && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => darBaixaPedido(pedido.id)}
+                        >
                           Dar Baixa
                         </Button>
                       )}
-                      {pedido.status !== "cancelado" && pedido.status !== "concluido" && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => atualizarStatusPedido(pedido.id, "cancelado")}
-                        >
-                          Cancelar
-                        </Button>
-                      )}
+                      {pedido.status !== "cancelado" &&
+                        pedido.status !== "concluido" && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() =>
+                              atualizarStatusPedido(pedido.id, "cancelado")
+                            }
+                          >
+                            Cancelar
+                          </Button>
+                        )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -317,5 +544,5 @@ export function GestaoVendas() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
