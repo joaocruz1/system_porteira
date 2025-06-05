@@ -543,7 +543,7 @@ export function GestaoEstoque() {
                       <TableRow key={produto.id}>
                         <TableCell>
                          <ImageGallery
-                          images={produto.image ? [produto.image] : []} // ImageGallery espera um array de strings
+                          images={produto.image ? [produto.image] : []} 
                           productName={produto.nome}
                           editable={false} // Importante: para modo de visualização simples
                         />

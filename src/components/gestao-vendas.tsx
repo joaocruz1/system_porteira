@@ -44,9 +44,9 @@ import { DetalhesPedido } from "@/components/detalhes-pedido";
 
 // Interface para os itens dentro do estado novoPedido
 interface NovoPedidoProduto {
-  produtoId: string;
-  nome: string;
-  quantidade: number;
+  id: string;
+  name: string;
+  quantity: number;
   unitPrice: number; // Preço unitário do produto base
   totalPrice: number; // quantidade * unitPrice (+ setupFeeItem se houver)
   logotype?: string; // Adicionado para consistência com o que a API pode esperar por item
@@ -56,8 +56,8 @@ interface NovoPedidoProduto {
 // Interface para o payload que será enviado para criarPedido
 // Isso ajuda a garantir que todos os campos obrigatórios de Omit<Pedido, "id"> sejam incluídos
 interface PedidoPayload extends Omit<Pedido, "id" | "produtos"> {
-  produtos: Array<{ // Esta é a estrutura que a API (via contexto) espera para os itens
-    produtoId: string;
+  product: Array<{ // Esta é a estrutura que a API (via contexto) espera para os itens
+    Id: string;
     nome: string;
     quantidade: number;
     preco: number; // Mapeado de unitPrice
@@ -123,7 +123,7 @@ export function GestaoVendas() {
       const setupFeeParaEsteItem = 0; // Defina se houver taxa de setup por item
 
       const produtoExistenteIndex = novoPedido.produtos.findIndex(
-        (p) => p.produtoId === produtoBase.id
+        (p) => p.id === produtoBase.id
       );
 
       let produtosAtualizados: NovoPedidoProduto[];
@@ -131,7 +131,7 @@ export function GestaoVendas() {
       if (produtoExistenteIndex > -1) {
         produtosAtualizados = novoPedido.produtos.map((p, index) => {
           if (index === produtoExistenteIndex) {
-            const novaQuantidade = p.quantidade + quantidadeSelecionada;
+            const novaQuantidade = p.quantity + quantidadeSelecionada;
             return {
               ...p,
               quantidade: novaQuantidade,
@@ -146,9 +146,9 @@ export function GestaoVendas() {
         });
       } else {
         const novoItem: NovoPedidoProduto = {
-          produtoId: produtoBase.id,
-          nome: produtoBase.nome,
-          quantidade: quantidadeSelecionada,
+          id: produtoBase.id,
+          name: produtoBase.nome,
+          quantity: quantidadeSelecionada,
           unitPrice: unitPriceDoProdutoBase,
           totalPrice: calcularTotalItem(
             unitPriceDoProdutoBase,
@@ -174,7 +174,7 @@ export function GestaoVendas() {
 
   const removerProdutoDoPedido = (produtoId: string) => {
     const produtosFiltrados = novoPedido.produtos.filter(
-      (p) => p.produtoId !== produtoId
+      (p) => p.id !== produtoId
     );
     setNovoPedido((prev) => ({
       ...prev,
@@ -189,9 +189,9 @@ export function GestaoVendas() {
       // Mapear os produtos do estado novoPedido (NovoPedidoProduto)
       // para a estrutura esperada pela interface Pedido['produtos'] do contexto
       const produtosParaAPIContexto = novoPedido.produtos.map((item) => ({
-        produtoId: item.produtoId,
-        nome: item.nome,
-        quantidade: item.quantidade,
+        produtoId: item.id,
+        nome: item.name,
+        quantidade: item.quantity,
         preco: item.unitPrice, // Mapeando unitPrice para preco
         logotype: item.logotype || "text", // Pega o logotype do item ou usa padrão
         // logoText: item.logoText || "", // Se você tiver logoText no NovoPedidoProduto
@@ -407,7 +407,7 @@ export function GestaoVendas() {
                           className="flex items-center justify-between bg-muted p-2 rounded"
                         >
                           <div>
-                            <p>{produto.nome} x {produto.quantidade}</p>
+                            <p>{produto.name} x {produto.quantity}</p>
                             <p className="text-xs text-muted-foreground">
                               Unit: R$ {produto.unitPrice.toFixed(2)}
                             </p>
@@ -419,7 +419,7 @@ export function GestaoVendas() {
                               variant="outline"
                               size="sm"
                               onClick={() =>
-                                removerProdutoDoPedido(produto.produtoId)
+                                removerProdutoDoPedido(produto.id)
                               }
                             >
                               Remover
