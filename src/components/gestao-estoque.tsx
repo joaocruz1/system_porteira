@@ -23,7 +23,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Pencil, Trash2, Package, Search, AlertTriangle } from "lucide-react"
 import { useEstoque, type Produto } from "@/components/estoque-context"
 import { useAuth } from "@/components/auth-context"
-import Image from "next/image"
 import { ImageGallery } from "@/components/image-gallery"
 
 export function GestaoEstoque() {
@@ -312,6 +311,7 @@ export function GestaoEstoque() {
                           <SelectItem value="Escritório">Escritório</SelectItem>
                           <SelectItem value="Facas e Utensílios">Facas e Utensílios</SelectItem>
                           <SelectItem value="Kits e Conjuntos">Kits e Conjuntos</SelectItem>
+                          <SelectItem value="Tábuas e Pranchas">Tábuas e Pranchas</SelectItem>
                           <SelectItem value="Utencilios">Utencilios</SelectItem>
                         </SelectContent>
                       </Select>

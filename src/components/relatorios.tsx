@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart3, TrendingUp, TrendingDown, Package, ShoppingCart, DollarSign, Download } from "lucide-react"
 import { useEstoque } from "@/components/estoque-context"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useAuth } from "@/components/auth-context"
 
 export function Relatorios() {
+  const reportRef = useRef(null); 
   const { permissions } = useAuth()
   const { produtos, pedidos } = useEstoque()
   const [periodoSelecionado, setPeriodoSelecionado] = useState("mes")
@@ -95,23 +96,13 @@ export function Relatorios() {
       {} as Record<string, { quantidade: number; receita: number }>,
     )
 
-  const exportarRelatorio = (tipo: string) => {
-    // Simulação de exportação
-    alert(`Exportando relatório de ${tipo}...`)
-  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 " ref={reportRef}>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Relatórios</h2>
           <p className="text-muted-foreground">Análises detalhadas do seu negócio</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => exportarRelatorio("geral")}>
-            <Download className="mr-2 h-4 w-4" />
-            Exportar PDF
-          </Button>
         </div>
       </div>
 

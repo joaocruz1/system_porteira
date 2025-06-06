@@ -72,10 +72,13 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
 
   const verificarDisponibilidadeEstoque = () => {
     return pedido.produtos.every((item) => {
-      const produtoEstoque = produtos.find((p) => p.id === item.produtoId)
-      return produtoEstoque && produtoEstoque.quantidade >= item.quantidade
-    })
-  }
+      // Altere a lógica do .find() aqui
+      const produtoEstoque = produtos.find((p) =>
+        p.nome.toLowerCase().includes(item.nome.toLowerCase())
+      );
+      return produtoEstoque && produtoEstoque.quantidade >= item.quantidade;
+    });
+  };
 
   const estoqueDisponivel = verificarDisponibilidadeEstoque()
 
@@ -284,9 +287,11 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
             </TableHeader>
             <TableBody>
               {pedido.produtos.map((item, index) => {
-                const produtoEstoque = produtos.find((p) => p.id === item.produtoId)
-                const disponivel = produtoEstoque ? produtoEstoque.quantidade >= item.quantidade : false
-                const estoqueAtual = produtoEstoque?.quantidade || 0
+              const produtoEstoque = produtos.find((p) =>
+                p.nome.toLowerCase().includes(item.nome.toLowerCase())
+              )
+              const disponivel = produtoEstoque ? produtoEstoque.quantidade >= item.quantidade : false
+              const estoqueAtual = produtoEstoque?.quantidade || 0
 
                 return (
                   <TableRow key={index}>

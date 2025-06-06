@@ -15,13 +15,13 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mb-4">
+          <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
             <Package className="h-8 w-8 text-white" />
           </div>
-          <CardTitle className="text-2xl font-bold text-green-700">Porteira de Minas</CardTitle>
+          <CardTitle className="text-2xl font-bold text-blue-700">Porteira de Minas / Metal Laser</CardTitle>
           <CardDescription>Sistema de Controle de Estoque</CardDescription>
         </CardHeader>
         <CardContent>

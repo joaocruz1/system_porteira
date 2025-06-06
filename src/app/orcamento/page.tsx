@@ -67,7 +67,6 @@ interface QuoteItem {
   totalPrice: number
 }
 
-// Atualizar a interface CustomerData para incluir endereço e remover message
 interface CustomerData {
   name: string
   email: string
@@ -91,6 +90,7 @@ export default function PublicQuotePage() {
   const [selectedProduct, setSelectedProduct] = useState<CatalogItem | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [customQuoteOpen, setCustomQuoteOpen] = useState(false)
+  const [showSuccessArt, setShowSuccessArt] = useState(false)
 
   const filteredProducts = METALASER_CATALOG.filter((product) => {
     const matchesCategory = selectedCategory === "Todos" || product.category === selectedCategory
@@ -196,67 +196,70 @@ export default function PublicQuotePage() {
     return { subtotal, setupFees, total }
   }
 
-const sendQuote = async () => {
-  if (!customerData.name || !customerData.email || !customerData.phone || quoteItems.length === 0) {
-    alert("Por favor, preencha seus dados e adicione pelo menos um item ao orçamento.");
-    return;
-  }
-
-  console.log("Dados do Cliente para Envio:", customerData);
-  console.log("Itens do Orçamento para Envio:", quoteItems);
-
-  const formData = new FormData();
-
-
-  formData.append('customerData', JSON.stringify(customerData));
-  let mainLogoFile: File | undefined = undefined;
-
-  const processedQuoteItems = quoteItems.map(item => {
-
-    if (item.logoType === "image" && item.logoImage && !mainLogoFile) {
-      mainLogoFile = item.logoImage;
+  const sendQuote = async () => {
+    if (!customerData.name || !customerData.email || !customerData.phone || quoteItems.length === 0) {
+      alert("Por favor, preencha seus dados e adicione pelo menos um item ao orçamento.")
+      return
     }
 
-    const { logoImage, ...itemWithoutFile } = item;
-    return itemWithoutFile;
-  });
+    console.log("Dados do Cliente para Envio:", customerData)
+    console.log("Itens do Orçamento para Envio:", quoteItems)
 
-  formData.append('quoteItems', JSON.stringify(processedQuoteItems));
+    const formData = new FormData()
 
-  if (mainLogoFile) {
-    formData.append('logoFile', mainLogoFile);
-  }
+    formData.append("customerData", JSON.stringify(customerData))
+    let mainLogoFile: File | undefined = undefined
 
+    const processedQuoteItems = quoteItems.map((item) => {
+      if (item.logoType === "image" && item.logoImage && !mainLogoFile) {
+        mainLogoFile = item.logoImage
+      }
 
-  try {
-    const response = await fetch("/api/pedido", {
-      method: "POST",
-      // Não defina 'Content-Type' manualmente para FormData; o browser faz isso.
-      body: formData,
-    });
+      const { logoImage, ...itemWithoutFile } = item
+      return itemWithoutFile
+    })
 
-    if (!response.ok) {
-      const errorResult = await response.json().catch(() => ({ error: "Erro desconhecido", details: response.statusText }));
-      alert(`Ocorreu um erro ao enviar o orçamento: ${errorResult.details || errorResult.error || response.statusText}. Por favor, tente novamente mais tarde.`);
-      return;
+    formData.append("quoteItems", JSON.stringify(processedQuoteItems))
+
+    if (mainLogoFile) {
+      formData.append("logoFile", mainLogoFile)
     }
-    toast.success("Orçamento enviado com sucesso! Entraremos em contato em breve.");
 
-    // Reset form
-    setCustomerData({
-      name: "",
-      email: "",
-      phone: "",
-      company: "",
-      address: "",
-    });
-    setQuoteItems([]); // Limpar itens do orçamento também
-  } catch (error) {
-      console.error("Falha na requisição de envio do orçamento:", error);
-      alert("Falha na comunicação ao enviar o orçamento. Verifique sua conexão e tente novamente.");
+    try {
+      const response = await fetch("/api/pedido", {
+        method: "POST",
+        // Não defina 'Content-Type' manualmente para FormData; o browser faz isso.
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorResult = await response
+          .json()
+          .catch(() => ({ error: "Erro desconhecido", details: response.statusText }))
+        alert(
+          `Ocorreu um erro ao enviar o orçamento: ${errorResult.details || errorResult.error || response.statusText}. Por favor, tente novamente mais tarde.`,
+        )
+        return
+      }
+      toast.success("Orçamento enviado com sucesso! Entraremos em contato em breve.")
+
+      
+      setShowSuccessArt(true)
+
+      // Reset form
+      setCustomerData({
+        name: "",
+        email: "",
+        phone: "",
+        company: "",
+        address: "",
+      })
+      setQuoteItems([]) // Limpar itens do orçamento também
+    } catch (error) {
+      console.error("Falha na requisição de envio do orçamento:", error)
+      alert("Falha na comunicação ao enviar o orçamento. Verifique sua conexão e tente novamente.")
+    }
   }
-};
-
 
   const scrollToCustomerData = () => {
     const customerDataElement = document.getElementById("customer-data-section")
@@ -841,6 +844,80 @@ const sendQuote = async () => {
             </DialogDescription>
           </DialogHeader>
           <CustomProductForm onAdd={addCustomToQuote} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para Arte de Sucesso */}
+      <Dialog open={showSuccessArt} onOpenChange={setShowSuccessArt}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-center text-green-600 flex items-center justify-center gap-2">
+              <CheckCircle className="h-6 w-6" />
+              Pedido Enviado com Sucesso!
+            </DialogTitle>
+            <DialogDescription className="text-center text-gray-600">
+              Seu orçamento foi enviado e entraremos em contato em breve. Como agradecimento, baixe nossa arte
+              exclusiva!
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Área da Arte */}
+            <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-6 rounded-lg border-2 border-dashed border-blue-200 text-center">
+              <div className="space-y-3">
+                <h3 className="font-semibold text-gray-900">Arte Exclusiva MetaLaser</h3>
+                <p className="text-sm text-gray-600">Design especial criado pela nossa equipe para nossos clientes</p>
+
+                {/* Preview da arte - você pode substituir por uma imagem real */}
+                <div className="bg-white p-4 rounded border mx-auto max-w-xs">
+                  <Image
+                    src="/images/cartaoresposta.png"
+                    alt="Arte Exclusiva MetaLaser"
+                    width={300}
+                    height={300}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Botões */}
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  // Aqui você pode implementar o download real da arte
+                  // Por enquanto, vou simular o download
+                  const link = document.createElement("a")
+                  link.href = "/images/arte-metalaser.png" // Substitua pelo caminho real da sua arte
+                  link.download = "arte-metalaser-exclusiva.png"
+                  document.body.appendChild(link)
+                  link.click()
+                  document.body.removeChild(link)
+
+                  toast.success("Arte baixada com sucesso!")
+                }}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Package className="mr-2 h-4 w-4" />
+                Baixar Arte
+              </Button>
+
+              <Button variant="outline" onClick={() => setShowSuccessArt(false)} className="flex-1">
+                Fechar
+              </Button>
+            </div>
+
+            <div className="bg-blue-50 p-3 rounded border border-blue-200">
+              <div className="flex items-start gap-2">
+                <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-blue-800">
+                  <p className="font-medium mb-1">Obrigado pela preferência!</p>
+                  <p>
+                    Esta arte é um presente especial para nossos clientes. Use como quiser em seus projetos pessoais.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
