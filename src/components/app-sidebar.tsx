@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar"
 import { useNavigation } from "@/components/navigation-context"
 import { useAuth } from "@/components/auth-context"
+import { title } from "process"
 
 const menuItems = [
   {
@@ -37,6 +38,11 @@ const menuItems = [
     icon: BarChart3,
     component: "relatorios",
   },
+  {
+    title: "Gestão de Perdas",
+    icon: Calculator,
+    component: "perdas",
+  }
 ]
 
 export function AppSidebar() {

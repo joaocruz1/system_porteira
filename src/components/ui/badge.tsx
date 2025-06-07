@@ -1,7 +1,8 @@
+// Arquivo: /components/ui/badge.tsx
+
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
@@ -25,14 +26,15 @@ const badgeVariants = cva(
   }
 )
 
-function Badge({
-  className,
-  variant,
-  asChild = false,
-  ...props
-}: React.ComponentProps<"span"> &
-  VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot : "span"
+// ✅ SOLUÇÃO: Crie e exporte a interface de propriedades
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLSpanElement>,
+    VariantProps<typeof badgeVariants> {}
+
+// Use a nova interface no seu componente
+function Badge({ className, variant, ...props }: BadgeProps) {
+  // O corpo da função permanece o mesmo
+  const Comp = "span"
 
   return (
     <Comp
@@ -43,4 +45,5 @@ function Badge({
   )
 }
 
+// Mantenha as outras exportações
 export { Badge, badgeVariants }

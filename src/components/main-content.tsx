@@ -5,6 +5,7 @@ import { GestaoEstoque } from "@/components/gestao-estoque"
 import { GestaoVendas } from "@/components/gestao-vendas"
 import { Relatorios } from "@/components/relatorios"
 import { useNavigation } from "@/components/navigation-context"
+import { GestaoPerdas } from "@/components/gestao-perdas"
 
 export function MainContent() {
   const { activeComponent } = useNavigation()
@@ -19,6 +20,8 @@ export function MainContent() {
         return <GestaoVendas />
       case "relatorios":
         return <Relatorios />
+      case "perdas":
+        return <GestaoPerdas />
       default:
         return <Dashboard />
     }

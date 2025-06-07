@@ -39,20 +39,39 @@ export interface Pedido {
   dataPedido: string // No backend é data_pedido (DateTime)
 }
 
+export interface Perda {
+  id: string
+  produtoId: string
+  produtoNome: string
+  quantidade: number
+  valorUnitario: number
+  valorTotal: number
+  motivo: "danificado" | "perdido" | "vencido" | "defeito" | "outros"
+  descricao: string
+  dataPerda: string
+  responsavel: string
+}
+
 interface EstoqueContextType {
   produtos: Produto[]
   pedidos: Pedido[]
+  perdas : Perda[]
   isLoading: boolean
   error: string | null
   adicionarProduto: (produto: Omit<Produto, "id" | "imagensExistentes" | "image" >) => Promise<void>
   removerProduto: (id: string) => Promise<void>
   atualizarQuantidade: (id: string, quantidade: number) => Promise<void>
   atualizarProdutoExistente: (id: string, novaQuantidade: number) => Promise<void>
-  // Ajustar o tipo do parâmetro de criarPedido se necessário para corresponder ao que a API de Pedido espera
+
+  
   criarPedido: (pedido: Omit<Pedido, "id">) => Promise<void>
   atualizarStatusPedido: (id: string, status: Pedido["status"]) => Promise<void>
   darBaixaPedido: (pedidoId: string) => Promise<void>
   refreshData: () => void
+
+  adicionarPerda: (perda: Omit<Perda, "id">) => Promise<void>
+  removerPerda: (id: string) => Promise<void>
+  atualizarPerda: (id: string, perda: Partial<Perda>) => Promise<void>
 }
 
 const EstoqueContext = createContext<EstoqueContextType | undefined>(undefined)
@@ -60,12 +79,14 @@ const EstoqueContext = createContext<EstoqueContextType | undefined>(undefined)
 interface EstoqueProviderProps {
   children: ReactNode;
   initialProdutos?: Produto[];
-  initialPedidos?: Pedido[]; // Adicionando para consistência, se quiser carregar pedidos inicialmente também
+  initialPedidos?: Pedido[]; 
+  initialPerdas?: Perda[];
 }
 
-export function EstoqueProvider({ children, initialProdutos, initialPedidos }: EstoqueProviderProps) {
+export function EstoqueProvider({ children, initialProdutos, initialPedidos, initialPerdas }: EstoqueProviderProps) {
   const [produtos, setProdutos] = useState<Produto[]>(initialProdutos || [])
   const [pedidos, setPedidos] = useState<Pedido[]>(initialPedidos || [])
+  const [perdas, setPerdas] = useState<Perda[]>(initialPerdas || [])
   const [isLoading, setIsLoading] = useState(true) // Geralmente true no início
   const [error, setError] = useState<string | null>(null)
 
@@ -96,13 +117,13 @@ export function EstoqueProvider({ children, initialProdutos, initialPedidos }: E
         console.log("CTX: Produtos carregados da API:", produtosDataAPI.length);
       }
 
-      // 2. Buscar ou Definir Pedidos
+
       if (isInitialContextLoad && initialPedidos && initialPedidos.length > 0) {
         console.log("CTX: Usando initialPedidos do servidor.");
-        setPedidos(initialPedidos); // Usar os pedidos iniciais se fornecidos no carregamento inicial
+        setPedidos(initialPedidos); 
       } else {
         console.log("CTX: Buscando pedidos da API...");
-        const responsePedidos = await fetch(`${API_BASE_URL}/pedido`); // Endpoint GET para todos os pedidos
+        const responsePedidos = await fetch(`${API_BASE_URL}/pedido`); 
         if (!responsePedidos.ok) {
           const errorData = await responsePedidos.json().catch(() => ({}));
           throw new Error(errorData.details || errorData.error || `Erro ao buscar pedidos: ${responsePedidos.statusText} (${responsePedidos.status})`);
@@ -112,6 +133,17 @@ export function EstoqueProvider({ children, initialProdutos, initialPedidos }: E
         if (!Array.isArray(rawPedidosFromApi)) {
           throw new Error("Dados de pedidos recebidos da API não são um array.");
         }
+      
+      // Buscar Perdas
+      if (isInitialContextLoad && initialPerdas && initialPerdas.length > 0) {
+        setPerdas(initialPerdas)
+      } else {
+        const responsePerdas = await fetch(`${API_BASE_URL}/perdas`)
+        if (responsePerdas.ok) {
+          const perdasData = await responsePerdas.json()
+          setPerdas(perdasData)
+        }
+      }
         
         // Mapeamento dos dados da API para a interface Pedido do contexto
         const mappedPedidos: Pedido[] = rawPedidosFromApi.map((apiPedido: any) => {
@@ -182,7 +214,7 @@ export function EstoqueProvider({ children, initialProdutos, initialPedidos }: E
       setIsLoading(false);
       console.log("CTX: Busca de dados (Produtos e Pedidos) finalizada.");
     }
-  }, [API_BASE_URL, initialProdutos, initialPedidos]); // Adiciona initialPedidos aqui
+  }, [API_BASE_URL, initialProdutos, initialPedidos, initialPerdas]); // Adiciona initialPedidos aqui
 
   useEffect(() => {
     console.log("CTX useEffect: Carregando dados iniciais (produtos e pedidos).");
@@ -388,11 +420,84 @@ const criarPedido = async (pedidoDataPayload: Omit<Pedido, "id">) => {
   }
   };
 
+   const adicionarPerda = async (perdaData: Omit<Perda, "id">) => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const response = await fetch(`${API_BASE_URL}/perdas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(perdaData),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Erro ao registrar perda`)
+      }
+
+      // Atualizar quantidade do produto no estoque
+      const produto = produtos.find((p) => p.id === perdaData.produtoId)
+      if (produto) {
+        const novaQuantidade = produto.quantidade - perdaData.quantidade
+        await atualizarQuantidade(perdaData.produtoId, novaQuantidade)
+      }
+
+      toast.success("Perda registrada com sucesso!")
+      refreshData()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao registrar perda."
+      setError(message)
+      toast.error(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const removerPerda = async (id: string) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/perdas/${id}`, { method: "DELETE" })
+      if (!response.ok) {
+        throw new Error(`Erro ao remover perda`)
+      }
+      toast.success("Perda removida com sucesso!")
+      refreshData()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao remover perda."
+      setError(message)
+      toast.error(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const atualizarPerda = async (id: string, perdaData: Partial<Perda>) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/perdas/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(perdaData),
+      })
+      if (!response.ok) {
+        throw new Error(`Erro ao atualizar perda`)
+      }
+      toast.success("Perda atualizada com sucesso!")
+      refreshData()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao atualizar perda."
+      setError(message)
+      toast.error(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <EstoqueContext.Provider
       value={{
         produtos,
         pedidos,
+        perdas,
         isLoading,
         error,
         adicionarProduto,
@@ -402,6 +507,9 @@ const criarPedido = async (pedidoDataPayload: Omit<Pedido, "id">) => {
         criarPedido,
         atualizarStatusPedido,
         darBaixaPedido,
+        adicionarPerda,
+        removerPerda,
+        atualizarPerda,
         refreshData,
       }}
     >
