@@ -115,10 +115,12 @@ export function GestaoVendas() {
   };
 
   const adicionarProdutoAoPedido = () => {
-    const produtoBase = produtosDoEstoque.find(
-      (p) => p.id === produtoSelecionadoId
-    );
+    const produtoBase = produtosDoEstoque.find(p => p.id === produtoSelecionadoId);
     if (produtoBase && quantidadeSelecionada > 0) {
+      if (quantidadeSelecionada > produtoBase.quantidade) {
+        alert(`Quantidade indisponível! Só há ${produtoBase.quantidade} em estoque.`);
+        return;
+      }
       const { preco: unitPriceDoProdutoBase } = produtoBase;
       const setupFeeParaEsteItem = 0; // Defina se houver taxa de setup por item
 
@@ -183,7 +185,7 @@ export function GestaoVendas() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+ const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (novoPedido.cliente && novoPedido.produtos.length > 0) {
       // Mapear os produtos do estado novoPedido (NovoPedidoProduto)
@@ -196,7 +198,7 @@ export function GestaoVendas() {
         logotype: item.logotype || "text", // Pega o logotype do item ou usa padrão
         // logoText: item.logoText || "", // Se você tiver logoText no NovoPedidoProduto
       }));
-      
+
       // Este é o objeto que será enviado para criarPedido,
       // que por sua vez construirá o FormData
       const pedidoParaContexto: Omit<Pedido, "id"> = {
@@ -218,18 +220,6 @@ export function GestaoVendas() {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "concluido":
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case "cancelado":
-        return <XCircle className="h-4 w-4 text-red-600" />;
-      case "processando":
-        return <Clock className="h-4 w-4 text-blue-600" />;
-      default:
-        return <Clock className="h-4 w-4 text-yellow-600" />;
-    }
-  };
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -251,6 +241,10 @@ export function GestaoVendas() {
         onVoltar={() => setPedidoSelecionado(null)}
       />
     );
+  }
+
+  function getStatusIcon(status: string): React.ReactNode {
+    throw new Error("Function not implemented.");
   }
 
   return (
@@ -308,7 +302,7 @@ export function GestaoVendas() {
                     }
                     className="col-span-3"
                     placeholder="Endereço do cliente"
-                    required 
+                    required
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -515,14 +509,14 @@ export function GestaoVendas() {
                       )}
                       {(pedido.status === "pendente" ||
                         pedido.status === "processando") && (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => darBaixaPedido(pedido.id)}
-                        >
-                          Dar Baixa
-                        </Button>
-                      )}
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => darBaixaPedido(pedido.id)}
+                          >
+                            Dar Baixa
+                          </Button>
+                        )}
                       {pedido.status !== "cancelado" &&
                         pedido.status !== "concluido" && (
                           <Button
