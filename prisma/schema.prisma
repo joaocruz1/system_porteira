@@ -1,35 +1,49 @@
-
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")  
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model Produto {
-  id           String   @id @default(uuid()) @map("id_produt") // No Prisma é 'id', no DB é 'id_produto'
+  id           String    @id @default(uuid()) @map("id_produt") // No Prisma é 'id', no DB é 'id_produto'
   nome         String
   categoria    String?
   quantidade   Int?
   preco        Float?
   fornecedor   String?
   data_entrada DateTime? @map("data_entrada") // No Prisma é 'data_entrada', no DB também é 'data_entrada'
-  image        String?                      // No Prisma é 'image', no DB também é 'image'
-  
+  image        String? // No Prisma é 'image', no DB também é 'image'
 }
+
 model Pedido {
-  id          String     @id @default(uuid()) @map("pedido_id")
-  data_pedido DateTime   
-  status String 
-  total Decimal
-  logo String
-  item Json
+  id            String   @id @default(uuid()) @map("pedido_id")
+  data_pedido   DateTime
+  status        String
+  total         Decimal
+  logo          String
+  item          Json
   cliente_infos Json
 }
 
+model Custos {
+  id          String   @id @default(uuid()) @map("id_custos")
+  descricao   String
+  valor       Float
+  dataCusto   DateTime
+  categoria   String
+  observacoes String?
+}
 
-
+model Perdas {
+  id          String @id @default(uuid()) @map("id_perdas")
+  produtoId   String
+  quantidade  Int
+  motivo      String
+  dataPerda   DateTime
+  observacoes String?
+}
