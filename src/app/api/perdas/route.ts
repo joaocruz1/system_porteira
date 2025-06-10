@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
         { quantidade: "asc" },
         { motivo: "asc" },
         { dataPerda: "asc" },
-        { obervacoes: "asc" }, 
+        { observacoes: "asc" }, 
         { image: "asc" }      
       ],
     });

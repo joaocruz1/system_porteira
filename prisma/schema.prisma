@@ -30,20 +30,12 @@ model Pedido {
   cliente_infos Json
 }
 
-model Custos {
-  id          String   @id @default(uuid()) @map("id_custos")
-  descricao   String
-  valor       Float
-  dataCusto   DateTime
-  categoria   String
-  observacoes String?
-}
-
 model Perdas {
-  id          String @id @default(uuid()) @map("id_perdas")
+  id          String @id @default(uuid()) @map("perda_id")
   produtoId   String
   quantidade  Int
+  image       String
   motivo      String
   dataPerda   DateTime
-  observacoes String?
+  observacoes String
 }

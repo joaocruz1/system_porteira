@@ -31,7 +31,6 @@ export function GestaoPerdas() {
   const [dialogAberto, setDialogAberto] = useState(false)
   const [perdaEditando, setPerdaEditando] = useState<Perda | null>(null)
 
-  // SOLUÇÃO: Tipar o objeto inicial e remover "as const"
   const initialNovaPerda: NovaPerdaForm = {
     produtoId: "",
     produtoNome: "",
@@ -44,7 +43,6 @@ export function GestaoPerdas() {
     responsavel: "",
   }
 
-  // SOLUÇÃO: Tipar o estado explicitamente com o tipo do formulário
   const [novaPerda, setNovaPerda] = useState<NovaPerdaForm>(initialNovaPerda)
 
   const motivosPerda = [
@@ -106,7 +104,6 @@ export function GestaoPerdas() {
     setDialogAberto(true)
   }
 
-  // SOLUÇÃO: Garantir que a função retorne apenas variantes válidas do Badge
   const getMotivoColor = (motivo: Perda["motivo"]): BadgeProps["variant"] => {
     switch (motivo) {
       case "danificado":
@@ -118,13 +115,14 @@ export function GestaoPerdas() {
       case "defeito":
         return "default"
       case "outros":
-        return "default" // Corrigido de "info" para "default"
+        return "default"
       default:
         return "outline"
     }
   }
 
-  const totalPerdas = perdas.reduce((acc, perda) => acc + perda.valorTotal, 0)
+  // --- CORREÇÃO 1 APLICADA AQUI ---
+  const totalPerdas = perdas.reduce((acc, perda) => acc + (perda.valorTotal || 0), 0)
 
   return (
     <div className="space-y-6">
@@ -159,7 +157,7 @@ export function GestaoPerdas() {
                     <SelectContent>
                       {produtos.map((produto) => (
                         <SelectItem key={produto.id} value={produto.id}>
-                          {produto.nome} - R$ {produto.preco.toFixed(2)}
+                          {produto.nome} - R$ {(produto.preco || 0).toFixed(2)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -246,7 +244,7 @@ export function GestaoPerdas() {
 
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label className="text-right">Valor Total</Label>
-                  <div className="col-span-3 text-lg font-semibold">R$ {novaPerda.valorTotal.toFixed(2)}</div>
+                  <div className="col-span-3 text-lg font-semibold">R$ {(novaPerda.valorTotal || 0).toFixed(2)}</div>
                 </div>
               </div>
               <DialogFooter>
@@ -336,7 +334,8 @@ export function GestaoPerdas() {
                     </Badge>
                   </TableCell>
                   <TableCell>{perda.responsavel}</TableCell>
-                  <TableCell>R$ {perda.valorTotal.toFixed(2)}</TableCell>
+                  {/* --- CORREÇÃO 2 APLICADA AQUI --- */}
+                  <TableCell>R$ {(perda.valorTotal || 0).toFixed(2)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" size="sm" onClick={() => handleEdit(perda)}>

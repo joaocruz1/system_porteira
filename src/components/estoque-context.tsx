@@ -1,9 +1,8 @@
-// src/components/estoque-context.tsx
-
 "use client"
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import { toast } from "sonner"
+
 
 export interface Produto {
   id: string

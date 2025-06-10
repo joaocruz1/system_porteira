@@ -136,7 +136,7 @@ export function GestaoVendas() {
             const novaQuantidade = p.quantity + quantidadeSelecionada;
             return {
               ...p,
-              quantidade: novaQuantidade,
+              quantidade: novaQuantidade, // "quantidade" é o nome correto na interface NovoPedidoProduto
               totalPrice: calcularTotalItem(
                 p.unitPrice,
                 novaQuantidade,
@@ -243,8 +243,21 @@ export function GestaoVendas() {
     );
   }
 
+  // --- FUNÇÃO CORRIGIDA ---
   function getStatusIcon(status: string): React.ReactNode {
-    throw new Error("Function not implemented.");
+    const iconProps = { className: "h-4 w-4" };
+    switch (status) {
+      case "concluido":
+        return <CheckCircle {...iconProps} />;
+      case "cancelado":
+        return <XCircle {...iconProps} />;
+      case "processando":
+        return <Clock {...iconProps} />;
+      case "pendente":
+        return <Clock {...iconProps} />; // Usando o mesmo ícone para pendente
+      default:
+        return null; // Não retorna ícone para status desconhecido
+    }
   }
 
   return (
