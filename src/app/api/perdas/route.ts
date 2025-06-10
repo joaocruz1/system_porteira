@@ -16,14 +16,14 @@ interface ErrorResponse {
 
 
 export async function POST(request: NextRequest) {
-  console.log("====== [APP ROUTER - POST /api/pedido] Adicionando produto ======");
+  console.log("====== [APP ROUTER - POST /api/perdas] Adicionando produto ======");
   try {
     const formData = await request.formData();
 
     const produtoId = formData.get('produtoId') as string | null;
     const quantidadeStr = formData.get('quantidade') as string | null;
     const motivo = formData.get('motivo') as string | null;
-    const observacoes = formData.get('observacoes') as string | null;
+    const descricao = formData.get('descricao') as string | null;
     const imageFile = formData.get('imageFile') as File | null; 
     
     console.log("[API POST /perdas] Conteúdo do formData para imageFile:", imageFile ? imageFile.name : "Nenhum arquivo recebido como imageFile");
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       produtoId,
       motivo: motivo || undefined,
       quantidade,
-      observacoes: observacoes || undefined,
+      descricao: descricao || undefined,
       // data_entrada: new Date(), // Descomente se precisar definir a data de entrada aqui
       image: imageUrlInBlob, // 4. Salvar a URL do Blob no banco de dados (ou null se não houver imagem)
     };
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
         { quantidade: "asc" },
         { motivo: "asc" },
         { dataPerda: "asc" },
-        { observacoes: "asc" }, 
+        { descricao: "asc" }, 
         { image: "asc" }      
       ],
     });
