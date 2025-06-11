@@ -37,5 +37,5 @@ model Perdas {
   image       String
   motivo      String
   dataPerda   DateTime
-  observacoes String
+  descricao   String
 }
