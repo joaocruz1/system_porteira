@@ -49,6 +49,8 @@ export interface Perda {
   descricao: string
   dataPerda: string
   responsavel: string
+  imagens: File[]
+  imagensExistentes: string[]
 }
 
 interface EstoqueContextType {
@@ -364,7 +366,7 @@ const criarPedido = async (pedidoDataPayload: Omit<Pedido, "id">) => {
 };
 
 
-  const atualizarStatusPedido = async (id: string, status: Pedido["status"]) => {
+const atualizarStatusPedido = async (id: string, status: Pedido["status"]) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -419,21 +421,32 @@ const criarPedido = async (pedidoDataPayload: Omit<Pedido, "id">) => {
   }
   };
 
-   const adicionarPerda = async (perdaData: Omit<Perda, "id">) => {
+  const adicionarPerda = async (perdaData: Omit<Perda, "id">) => {
     setIsLoading(true)
     setError(null)
+
+    const formData = new FormData()
+    formData.append("produtoId", perdaData.produtoId)
+    formData.append("quantidade", perdaData.quantidade.toString())
+    formData.append("motivo", perdaData.motivo)
+    formData.append("descricao", perdaData.descricao)
+    formData.append("dataPerda", perdaData.dataPerda)
+    formData.append("responsavel", perdaData.responsavel)
+    formData.append("valorTotal", perdaData.valorTotal.toString())
+
+    if (perdaData.imagens && perdaData.imagens.length > 0) {
+      formData.append("images", perdaData.imagens[0]);
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/perdas`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(perdaData),
+        body: formData,
       })
 
       if (!response.ok) {
         throw new Error(`Erro ao registrar perda`)
       }
-
-      // Atualizar quantidade do produto no estoque
       const produto = produtos.find((p) => p.id === perdaData.produtoId)
       if (produto) {
         const novaQuantidade = produto.quantidade - perdaData.quantidade

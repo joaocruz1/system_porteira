@@ -21,9 +21,13 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, AlertTriangle, Trash2, Edit } from "lucide-react"
 import { useEstoque, type Perda } from "@/components/estoque-context"
+import { ImageGallery } from "@/components/image-gallery"
 
 // Definir um tipo para o formulário para reutilização e clareza
-type NovaPerdaForm = Omit<Perda, "id">
+type NovaPerdaForm = Omit<Perda, "id"> & {
+  imagens: File[]
+  imagensExistentes: string[]
+}
 
 export function GestaoPerdas() {
   const { produtos, perdas, adicionarPerda, removerPerda, atualizarPerda } = useEstoque()
@@ -41,6 +45,8 @@ export function GestaoPerdas() {
     descricao: "",
     dataPerda: new Date().toISOString().split("T")[0],
     responsavel: "",
+    imagens: [],
+    imagensExistentes: [],
   }
 
   const [novaPerda, setNovaPerda] = useState<NovaPerdaForm>(initialNovaPerda)
@@ -52,6 +58,9 @@ export function GestaoPerdas() {
     { value: "defeito", label: "Defeito de Fabricação" },
     { value: "outros", label: "Outros" },
   ]
+
+  const [imagemPreview, setImagemPreview] = useState<string | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   const handleProdutoChange = (produtoId: string) => {
     const produto = produtos.find((p) => p.id === produtoId)
@@ -97,8 +106,10 @@ export function GestaoPerdas() {
       valorTotal: perda.valorTotal,
       motivo: perda.motivo,
       descricao: perda.descricao,
-      dataPerda: perda.dataPerda,
+      dataPerda: new Date(perda.dataPerda).toISOString().split('T')[0], // Garante formato YYYY-MM-DD
       responsavel: perda.responsavel,
+      imagens: [],
+      imagensExistentes:[],
     })
     setPerdaEditando(perda)
     setDialogAberto(true)
@@ -122,7 +133,8 @@ export function GestaoPerdas() {
   }
 
   // --- CORREÇÃO 1 APLICADA AQUI ---
-  const totalPerdas = perdas.reduce((acc, perda) => acc + (perda.valorTotal || 0), 0)
+  // Garante que a soma seja feita com números, não strings.
+  const totalPerdas = perdas.reduce((acc, perda) => acc + Number(perda.valorTotal || 0), 0)
 
   return (
     <div className="space-y-6">
@@ -134,7 +146,7 @@ export function GestaoPerdas() {
 
         <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => { setPerdaEditando(null); setNovaPerda(initialNovaPerda); }}>
               <Plus className="mr-2 h-4 w-4" />
               Registrar Perda
             </Button>
@@ -157,7 +169,7 @@ export function GestaoPerdas() {
                     <SelectContent>
                       {produtos.map((produto) => (
                         <SelectItem key={produto.id} value={produto.id}>
-                          {produto.nome} - R$ {(produto.preco || 0).toFixed(2)}
+                          {produto.nome} - R$ {Number(produto.preco || 0).toFixed(2)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -242,9 +254,35 @@ export function GestaoPerdas() {
                   />
                 </div>
 
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <Label className="text-right mt-2">Imagens da Perda</Label>
+                  <div className="col-span-3">
+                    <ImageGallery
+                      images={novaPerda.imagensExistentes}
+                      productName={`Perda - ${novaPerda.produtoNome || "Produto"}`}
+                      onAddImages={(files) => {
+                        setNovaPerda((prev) => ({
+                          ...prev,
+                          imagens: [...prev.imagens, ...files].slice(0, 5),
+                        }))
+                      }}
+                      onRemoveImage={(index) => {
+                        setNovaPerda((prev) => ({
+                          ...prev,
+                          imagensExistentes: prev.imagensExistentes.filter((_, i) => i !== index),
+                        }))
+                      }}
+                      editable={true}
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Adicione fotos que comprovem a perda (máximo 5 imagens)
+                    </p>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label className="text-right">Valor Total</Label>
-                  <div className="col-span-3 text-lg font-semibold">R$ {(novaPerda.valorTotal || 0).toFixed(2)}</div>
+                  <div className="col-span-3 text-lg font-semibold">R$ {Number(novaPerda.valorTotal || 0).toFixed(2)}</div>
                 </div>
               </div>
               <DialogFooter>
@@ -276,6 +314,7 @@ export function GestaoPerdas() {
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
+            {/* Aqui usamos a variável já calculada corretamente */}
             <div className="text-2xl font-bold">R$ {totalPerdas.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">Prejuízo acumulado</p>
           </CardContent>
@@ -315,6 +354,7 @@ export function GestaoPerdas() {
               <TableRow>
                 <TableHead>Data</TableHead>
                 <TableHead>Produto</TableHead>
+                <TableHead>Imagens</TableHead>
                 <TableHead>Quantidade</TableHead>
                 <TableHead>Motivo</TableHead>
                 <TableHead>Responsável</TableHead>
@@ -327,6 +367,9 @@ export function GestaoPerdas() {
                 <TableRow key={perda.id}>
                   <TableCell>{new Date(perda.dataPerda).toLocaleDateString("pt-BR")}</TableCell>
                   <TableCell>{perda.produtoNome}</TableCell>
+                  <TableCell>
+
+                  </TableCell>
                   <TableCell>{perda.quantidade}</TableCell>
                   <TableCell>
                     <Badge variant={getMotivoColor(perda.motivo)}>
@@ -335,7 +378,7 @@ export function GestaoPerdas() {
                   </TableCell>
                   <TableCell>{perda.responsavel}</TableCell>
                   {/* --- CORREÇÃO 2 APLICADA AQUI --- */}
-                  <TableCell>R$ {(perda.valorTotal || 0).toFixed(2)}</TableCell>
+                  <TableCell>R$ {Number(perda.valorTotal || 0).toFixed(2)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" size="sm" onClick={() => handleEdit(perda)}>

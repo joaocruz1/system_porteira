@@ -38,4 +38,5 @@ model Perdas {
   motivo      String
   dataPerda   DateTime
   descricao   String
+  valorTotal  Decimal
 }

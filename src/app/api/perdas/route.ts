@@ -24,7 +24,16 @@ export async function POST(request: NextRequest) {
     const quantidadeStr = formData.get('quantidade') as string | null;
     const motivo = formData.get('motivo') as string | null;
     const descricao = formData.get('descricao') as string | null;
-    const imageFile = formData.get('imageFile') as File | null; 
+    const imageFile = formData.get('images') as File | null; 
+    const dataPerdaStr = formData.get('dataPerda') as string | null;
+    const valorTotalStr = formData.get('valorTotal') as string | null;
+
+    const dataPerdaISO = dataPerdaStr ? new Date(dataPerdaStr) : undefined;
+
+    const valorTotalNum = valorTotalStr ? parseFloat(valorTotalStr) : 0;
+    if (isNaN(valorTotalNum)) {
+      return NextResponse.json<ErrorResponse>({ error: '"valorTotal" deve ser um número válido.' }, { status: 400 });
+    }
     
     console.log("[API POST /perdas] Conteúdo do formData para imageFile:", imageFile ? imageFile.name : "Nenhum arquivo recebido como imageFile");
 
@@ -69,8 +78,9 @@ export async function POST(request: NextRequest) {
       motivo: motivo || undefined,
       quantidade,
       descricao: descricao || undefined,
-      // data_entrada: new Date(), // Descomente se precisar definir a data de entrada aqui
-      image: imageUrlInBlob, // 4. Salvar a URL do Blob no banco de dados (ou null se não houver imagem)
+      dataPerda: dataPerdaISO || undefined, 
+      image: imageUrlInBlob, 
+      valorTotal: valorTotalNum,
     };
 
     const novaPerda = await prisma.perdas.create({
@@ -105,7 +115,8 @@ export async function GET(request: NextRequest) {
         { motivo: "asc" },
         { dataPerda: "asc" },
         { descricao: "asc" }, 
-        { image: "asc" }      
+        { image: "asc" },
+        { valorTotal: "asc" }      
       ],
     });
     return NextResponse.json(perdas, { status: 200 });
