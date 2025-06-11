@@ -23,8 +23,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Pencil, Trash2, Package, Search, AlertTriangle } from "lucide-react"
 import { useEstoque, type Produto } from "@/components/estoque-context"
 import { useAuth } from "@/components/auth-context"
-import Image from "next/image"
 import { ImageGallery } from "@/components/image-gallery"
+import { DetalhesProduto } from "@/components/detalhes-produto"
 
 export function GestaoEstoque() {
   const { permissions } = useAuth()
@@ -49,6 +49,7 @@ export function GestaoEstoque() {
 
   const [imagemPreview, setImagemPreview] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [produtoSelecionado, setProdutoSelecionado] = useState<string | null>(null)
 
   const produtosFiltrados = produtos.filter((produto) => {
     const matchCategoria = filtroCategoria === "todas" || produto.categoria === filtroCategoria
@@ -111,7 +112,7 @@ export function GestaoEstoque() {
       fornecedor: produto.fornecedor,
       dataEntrada: produto.dataEntrada,
       imagens: [],
-      imagensExistentes:  produto.image ? [produto.image] : [],
+      imagensExistentes: produto.image ? [produto.image] : [],
     })
     setDialogAberto(true)
   }
@@ -187,6 +188,10 @@ export function GestaoEstoque() {
     const url = URL.createObjectURL(file)
     setImagemPreview(url)
     setPreviewOpen(true)
+  }
+
+  if (produtoSelecionado) {
+    return <DetalhesProduto produtoId={produtoSelecionado} onVoltar={() => setProdutoSelecionado(null)} />
   }
 
   return (
@@ -542,11 +547,11 @@ export function GestaoEstoque() {
                     return (
                       <TableRow key={produto.id}>
                         <TableCell>
-                         <ImageGallery
-                          images={produto.image ? [produto.image] : []} 
-                          productName={produto.nome}
-                          editable={false} // Importante: para modo de visualização simples
-                        />
+                          <ImageGallery
+                            images={produto.image ? [produto.image] : []}
+                            productName={produto.nome}
+                            editable={false} // Importante: para modo de visualização simples
+                          />
                         </TableCell>
                         <TableCell className="font-medium">{produto.nome}</TableCell>
                         <TableCell>
@@ -564,6 +569,9 @@ export function GestaoEstoque() {
                         <TableCell>{new Date(produto.dataEntrada).toLocaleDateString("pt-BR")}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            <Button variant="outline" size="sm" onClick={() => setProdutoSelecionado(produto.id)}>
+                              Ver Detalhes
+                            </Button>
                             <Button variant="outline" size="sm" onClick={() => abrirEdicao(produto)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
