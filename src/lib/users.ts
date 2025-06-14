@@ -1,42 +1,32 @@
-import bcrypt from "bcryptjs"
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 
-export interface User {
-  message: string;
-  user: {
-    id: string;
-    email: string;
-    name: string;
-    cpf: string;
-    status: string;
-  };
-  token: string; 
-}
-
-
-export async function getUserByEmail(email: string, password: string): Promise<User | null> {
-
-  try{
-  const response = fetch('/api/loginUser/login', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.API_SECRET_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email,password }),
-  })
-
-  return response.data
-  }catch(error){
-    return null
+// Busca o usuário DIRETAMENTE no banco de dados.
+export async function findUserByEmail(email: string) {
+  try {
+    const user = await prisma.loginUser.findUnique({
+      where: { email },
+    });
+    // A função retorna o objeto do usuário completo (incluindo a senha) ou null.
+    return user;
+  } catch (error) {
+    console.error("Erro ao buscar usuário no banco de dados:", error);
+    return null;
   }
 }
 
+// Compara a senha do formulário com a senha criptografada do banco.
 export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-  return bcrypt.compare(password, hashedPassword)
+  // Se hashedPassword for nulo ou indefinido, a comparação falhará.
+  if (!hashedPassword) {
+    return false;
+  }
+  return bcrypt.compare(password, hashedPassword);
 }
 
+// Funções restantes (não são o problema, mas fazem parte do arquivo)
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10)
+  return bcrypt.hash(password, 10);
 }
 
 export function getUserPermissions(cargo: string) {
@@ -65,7 +55,7 @@ export function getUserPermissions(cargo: string) {
       canCreateQuotes: true,
       canManageUsers: false,
     },
-  }
+  };
 
-  return permissions[cargo as keyof typeof permissions] || permissions.funcionario
+  return permissions[cargo as keyof typeof permissions] || permissions.funcionario;
 }

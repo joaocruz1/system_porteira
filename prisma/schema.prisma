@@ -11,7 +11,7 @@ datasource db {
 
 model loginUser {
   id          String    @id @default(uuid())
-  nome        String?
+  nome        String
   email       String    @unique
   cargo       String
   senha       String
