@@ -9,6 +9,16 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model loginUser {
+  id          String    @id @default(uuid()) @map("id_loginUser")
+  nome        String?
+  email       String    @unique
+  cargo       String
+  password    String
+  ativo       Boolean
+  dataCriacao DateTime
+}
+
 model Produto {
   id           String    @id @default(uuid()) @map("id_produt") // No Prisma é 'id', no DB é 'id_produto'
   nome         String
