@@ -48,12 +48,11 @@ export async function POST(request: Request) {
       ...customerData
     };
 
-    // 7. Criação do usuário no banco de dados
+
     const novoUser = await prisma.loginUser.create({
       data: newUserPayload,
     });
 
-    // 8. Retorno da resposta de sucesso
     return new NextResponse(
       JSON.stringify({ 
         message: 'Usuário criado com sucesso!', 
