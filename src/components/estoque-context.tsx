@@ -54,6 +54,19 @@ export interface Perda {
   image?: string | null
 }
 
+export interface Custo {
+  id: string
+  categoria: "operacional" | "administrativo" | "marketing" | "financeiro" | "outros"
+  subcategoria: string
+  descricao: string
+  valor: number
+  dataVencimento: string
+  dataPagamento?: string
+  status: "pendente" | "pago" | "vencido"
+  fornecedor?: string
+  observacoes?: string
+}
+
 interface EstoqueContextType {
   produtos: Produto[]
   pedidos: Pedido[]
