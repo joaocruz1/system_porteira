@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     }
 
     // 7. Valida a senha
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.senha);
     if (!isPasswordValid) {
       return new NextResponse(
         JSON.stringify({ error: 'Credenciais inválidas' }),
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     );
 
     // 9. Remove a senha do objeto de resposta
-    const { password: _, ...userWithoutPassword } = user;
+    const { senha: _, ...userWithoutPassword } = user;
 
     // 10. Retorna a resposta de sucesso
     return new NextResponse(
