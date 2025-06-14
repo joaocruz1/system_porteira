@@ -18,7 +18,7 @@ export async function login(prevState: LoginState, formData: FormData): Promise<
   }
 
   try {
-    const user = await getUserByEmail(email)
+    const user = await getUserByEmail(email,password)
 
     if (!user) {
       return { error: "Credenciais inválidas" }
