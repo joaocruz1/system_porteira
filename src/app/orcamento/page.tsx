@@ -19,20 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-import {
-  Package,
-  Send,
-  Phone,
-  MapPin,
-  Instagram,
-  Plus,
-  Minus,
-  ShoppingCart,
-  Calculator,
-  Info,
-  CheckCircle,
-  Mail,
-} from "lucide-react"
+import { Package, Send, Phone, MapPin, Instagram, Plus, Minus, ShoppingCart, Calculator, Info, CheckCircle, Mail } from 'lucide-react'
 import { METALASER_CATALOG, CATEGORIES, type CatalogItem } from "@/lib/metal-catalog"
 import Image from "next/image"
 // Adicionar import do novo componente no topo do arquivo
@@ -74,6 +61,7 @@ interface CustomerData {
   phone: string
   company: string
   address: string
+  cep: string
 }
 
 export default function PublicQuotePage() {
@@ -87,10 +75,14 @@ export default function PublicQuotePage() {
     phone: "",
     company: "",
     address: "",
+    cep: "",
   })
   const [selectedProduct, setSelectedProduct] = useState<CatalogItem | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [customQuoteOpen, setCustomQuoteOpen] = useState(false)
+  const [shippingCost, setShippingCost] = useState<number>(0)
+  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false)
+  const [shippingError, setShippingError] = useState<string>("")
 
   const filteredProducts = METALASER_CATALOG.filter((product) => {
     const matchesCategory = selectedCategory === "Todos" || product.category === selectedCategory
@@ -188,16 +180,81 @@ export default function PublicQuotePage() {
     setQuoteItems(updatedItems)
   }
 
+  const calculateShipping = async (cep: string) => {
+    if (!cep || cep.length < 8) return
+    
+    setIsCalculatingShipping(true)
+    setShippingError("")
+    
+    try {
+      // Remover caracteres não numéricos do CEP
+      const cleanCep = cep.replace(/\D/g, '')
+      
+      if (cleanCep.length !== 8) {
+        setShippingError("CEP deve ter 8 dígitos")
+        return
+      }
+  
+      // Simular peso total baseado nos itens do orçamento
+      const totalWeight = quoteItems.reduce((acc, item) => {
+        const weight = item.product?.weight ? parseFloat(item.product.weight.replace(/[^\d.,]/g, '').replace(',', '.')) : 0.5
+        return acc + (weight * item.quantity)
+      }, 0)
+  
+      // Usar API dos Correios via ViaCEP para validar CEP e depois calcular frete
+      const cepResponse = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
+      const cepData = await cepResponse.json()
+      
+      if (cepData.erro) {
+        setShippingError("CEP não encontrado")
+        return
+      }
+  
+      // Calcular frete baseado na distância (simulação)
+      // CEP origem: 37570-000 (Ouro Fino/MG)
+      const originCep = "37570000"
+      
+      // Simulação de cálculo de frete baseado na região
+      let shippingRate = 15.00 // Taxa base
+      
+      // Ajustar taxa baseado no estado
+      const state = cepData.uf
+      if (state === "MG") {
+        shippingRate = 12.00
+      } else if (["SP", "RJ", "ES"].includes(state)) {
+        shippingRate = 18.00
+      } else if (["PR", "SC", "RS"].includes(state)) {
+        shippingRate = 22.00
+      } else if (["GO", "MT", "MS", "DF"].includes(state)) {
+        shippingRate = 25.00
+      } else {
+        shippingRate = 30.00
+      }
+      
+      // Adicionar taxa por peso
+      const weightFee = Math.max(0, (totalWeight - 1) * 3.00)
+      const finalShippingCost = shippingRate + weightFee
+      
+      setShippingCost(finalShippingCost)
+      
+    } catch (error) {
+      console.error("Erro ao calcular frete:", error)
+      setShippingError("Erro ao calcular frete. Tente novamente.")
+    } finally {
+      setIsCalculatingShipping(false)
+    }
+  }
+
   const getQuoteTotals = () => {
     const subtotal = quoteItems.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0)
     const setupFees = quoteItems.reduce((acc, item) => acc + item.setupFee, 0)
-    const total = subtotal + setupFees
+    const total = subtotal + setupFees + shippingCost
 
-    return { subtotal, setupFees, total }
+    return { subtotal, setupFees, shippingCost, total }
   }
 
 const sendQuote = async () => {
-  if (!customerData.name || !customerData.email || !customerData.phone || quoteItems.length === 0) {
+  if (!customerData.name || !customerData.email || !customerData.phone || !customerData.cep || quoteItems.length === 0) {
     alert("Por favor, preencha seus dados e adicione pelo menos um item ao orçamento.");
     return;
   }
@@ -249,7 +306,10 @@ const sendQuote = async () => {
       phone: "",
       company: "",
       address: "",
+      cep: "",
     });
+    setShippingCost(0);
+    setShippingError("");
     setQuoteItems([]); // Limpar itens do orçamento também
   } catch (error) {
       console.error("Falha na requisição de envio do orçamento:", error);
@@ -618,6 +678,12 @@ const sendQuote = async () => {
                           <span className="font-medium">R$ {setupFees.toFixed(2)}</span>
                         </div>
                       )}
+                      {shippingCost > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Frete:</span>
+                          <span className="font-medium">R$ {shippingCost.toFixed(2)}</span>
+                        </div>
+                      )}
                       <Separator />
                       <div className="flex justify-between text-lg font-bold">
                         <span className="text-gray-900">Total:</span>
@@ -725,14 +791,52 @@ const sendQuote = async () => {
                   </div>
                   {/* Substituir o campo de observações pelo campo de endereço na seção "Seus Dados" */}
                   <div>
+                    <Label htmlFor="cep" className="text-gray-700 font-medium">
+                      CEP *
+                    </Label>
+                    <Input
+                      id="cep"
+                      value={customerData.cep}
+                      onChange={(e) => {
+                        const newCep = e.target.value || ""
+                        setCustomerData({ ...customerData, cep: newCep })
+                        
+                        // Calcular frete quando CEP tiver 8 dígitos
+                        const cleanCep = newCep.replace(/\D/g, '')
+                        if (cleanCep.length === 8) {
+                          calculateShipping(cleanCep)
+                        } else {
+                          setShippingCost(0)
+                          setShippingError("")
+                        }
+                      }}
+                      placeholder="00000-000"
+                      maxLength={9}
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      required
+                    />
+                    {isCalculatingShipping && (
+                      <p className="text-xs text-blue-600 mt-1">Calculando frete...</p>
+                    )}
+                    {shippingError && (
+                      <p className="text-xs text-red-600 mt-1">{shippingError}</p>
+                    )}
+                    {shippingCost > 0 && !shippingError && (
+                      <p className="text-xs text-green-600 mt-1">
+                        Frete calculado: R$ {shippingCost.toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+        
+                  <div>
                     <Label htmlFor="address" className="text-gray-700 font-medium">
-                      Endereço *
+                      Endereço Completo *
                     </Label>
                     <Textarea
                       id="address"
                       value={customerData.address}
                       onChange={(e) => setCustomerData({ ...customerData, address: e.target.value || "" })}
-                      placeholder="Rua, número, bairro, cidade, estado e CEP"
+                      placeholder="Rua, número, bairro, cidade, estado"
                       rows={3}
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required

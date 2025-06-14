@@ -36,6 +36,7 @@ model Perdas {
   quantidade  Int
   image       String
   motivo      String
+  responsavel String
   dataPerda   DateTime
   descricao   String
   valorTotal  Decimal

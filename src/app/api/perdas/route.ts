@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
     const quantidadeStr = formData.get('quantidade') as string | null;
     const motivo = formData.get('motivo') as string | null;
     const descricao = formData.get('descricao') as string | null;
+    const responsavel = formData.get('responsavel') as string | null;
     const imageFile = formData.get('images') as File | null; 
     const dataPerdaStr = formData.get('dataPerda') as string | null;
     const valorTotalStr = formData.get('valorTotal') as string | null;
@@ -77,6 +78,7 @@ export async function POST(request: NextRequest) {
       produtoId,
       motivo: motivo || undefined,
       quantidade,
+      responsavel: responsavel,
       descricao: descricao || undefined,
       dataPerda: dataPerdaISO || undefined, 
       image: imageUrlInBlob, 
@@ -113,6 +115,7 @@ export async function GET(request: NextRequest) {
         { produtoId: "asc" },
         { quantidade: "asc" },
         { motivo: "asc" },
+        { responsavel: "asc" },
         { dataPerda: "asc" },
         { descricao: "asc" }, 
         { image: "asc" },

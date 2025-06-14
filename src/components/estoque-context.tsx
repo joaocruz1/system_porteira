@@ -51,6 +51,7 @@ export interface Perda {
   responsavel: string
   imagens: File[]
   imagensExistentes: string[]
+  image?: string | null
 }
 
 interface EstoqueContextType {
