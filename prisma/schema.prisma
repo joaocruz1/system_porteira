@@ -10,13 +10,13 @@ datasource db {
 }
 
 model loginUser {
-  id          String    @id @default(uuid()) @map("id_loginUser")
+  id          String    @id @default(uuid())
   nome        String?
   email       String    @unique
   cargo       String
-  password    String
+  senha       String
   ativo       Boolean
-  dataCriacao DateTime
+  dataCriacao DateTime?
 }
 
 model Produto {

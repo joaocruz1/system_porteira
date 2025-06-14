@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
-export async function POST(request: Request) {
+export async function POST (request: Request) {
   // 1. Verificação do método HTTP
   if (request.method !== 'POST') {
     return new NextResponse('Method Not Allowed', { status: 405 });
@@ -42,9 +42,9 @@ export async function POST(request: Request) {
       email,
       nome,
       cargo,
-      password: passwordHash,
+      senha: passwordHash,
       ativo,
-      status: 'ACTIVE',
+      dataCriacao: new Date(),
       ...customerData
     };
 
@@ -59,7 +59,8 @@ export async function POST(request: Request) {
         user: {
           email: novoUser.email,
           nome: novoUser.nome,
-          status: novoUser.ativo
+          cargo: novoUser.cargo,
+          ativo: novoUser.ativo,
         }
       }),
       { status: 201, headers: { 'Content-Type': 'application/json' } }
