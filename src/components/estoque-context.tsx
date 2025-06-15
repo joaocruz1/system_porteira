@@ -71,6 +71,7 @@ interface EstoqueContextType {
   produtos: Produto[]
   pedidos: Pedido[]
   perdas : Perda[]
+  custos : Custo[]
   isLoading: boolean
   error: string | null
   adicionarProduto: (produto: Omit<Produto, "id" | "imagensExistentes" | "image" >) => Promise<void>
@@ -87,6 +88,12 @@ interface EstoqueContextType {
   adicionarPerda: (perda: Omit<Perda, "id">) => Promise<void>
   removerPerda: (id: string) => Promise<void>
   atualizarPerda: (id: string, perda: Partial<Perda>) => Promise<void>
+
+  adicionarCusto: (custo:Omit<Custo, "id">) => Promise<void>
+  removerCusto: (id: string) => Promise<void>
+  atualizarCusto: (id: string, custo: Partial<Custo>) => Promise<void>
+  marcarCustoPago: (id: string, dataPagamento: string) => Promise<void>
+
 }
 
 const EstoqueContext = createContext<EstoqueContextType | undefined>(undefined)
@@ -96,12 +103,14 @@ interface EstoqueProviderProps {
   initialProdutos?: Produto[];
   initialPedidos?: Pedido[]; 
   initialPerdas?: Perda[];
+  initialCustos?: Custo[];
 }
 
-export function EstoqueProvider({ children, initialProdutos, initialPedidos, initialPerdas }: EstoqueProviderProps) {
+export function EstoqueProvider({ children, initialProdutos, initialPedidos, initialPerdas, initialCustos }: EstoqueProviderProps) {
   const [produtos, setProdutos] = useState<Produto[]>(initialProdutos || [])
   const [pedidos, setPedidos] = useState<Pedido[]>(initialPedidos || [])
   const [perdas, setPerdas] = useState<Perda[]>(initialPerdas || [])
+  const [custos, setCustos] = useState<Custo[]>(initialCustos || [])
   const [isLoading, setIsLoading] = useState(true) // Geralmente true no início
   const [error, setError] = useState<string | null>(null)
 
@@ -159,7 +168,18 @@ export function EstoqueProvider({ children, initialProdutos, initialPedidos, ini
           setPerdas(perdasData)
         }
       }
-        
+
+      // Buscar Custos
+      if (isInitialContextLoad && initialCustos && initialCustos.length > 0) {
+        setCustos(initialCustos)
+      } else {
+        const responseCustos = await fetch(`${API_BASE_URL}/custos`)
+        if (responseCustos.ok) {
+          const custosData = await responseCustos.json()
+          setCustos(custosData)
+        }
+      }
+    
         // Mapeamento dos dados da API para a interface Pedido do contexto
         const mappedPedidos: Pedido[] = rawPedidosFromApi.map((apiPedido: any) => {
           let clienteNome = "N/A";
@@ -187,9 +207,9 @@ export function EstoqueProvider({ children, initialProdutos, initialPedidos, ini
           }
 
           let statusPedido: Pedido["status"] = "pendente";
-          if (typeof apiPedido.status === 'boolean') { // No seu modelo Prisma Pedido, status é Boolean
-            statusPedido = apiPedido.status ? "concluido" : "pendente"; // Exemplo de mapeamento
-          } else if (typeof apiPedido.status === 'string') { // Se já vier como o enum string
+          if (typeof apiPedido.status === 'boolean') { 
+            statusPedido = apiPedido.status ? "concluido" : "pendente"; 
+          } else if (typeof apiPedido.status === 'string') { 
              const validStatuses: Pedido["status"][] = ["pendente", "processando", "concluido", "cancelado"];
             if (validStatuses.includes(apiPedido.status)) {
                 statusPedido = apiPedido.status;
@@ -202,7 +222,7 @@ export function EstoqueProvider({ children, initialProdutos, initialPedidos, ini
             endereco : clienteEndereco,
             cliente_telefone: clienteTelefone,
             cliente_email: clienteEmail,
-            logo : apiPedido.logo || "caminho/padrao/ou/string_vazia_se_permitido.png", // Pegue o logo da API
+            logo : apiPedido.logo || "caminho/padrao/ou/string_vazia_se_permitido.png",
             produtos: produtosPedido,
             total: Number(apiPedido.total) || 0,
             status: statusPedido,
@@ -218,7 +238,7 @@ export function EstoqueProvider({ children, initialProdutos, initialPedidos, ini
       console.error("CTX: Erro durante fetchData (produtos ou pedidos):", err);
       const message = (err instanceof Error) ? err.message : "Erro desconhecido ao buscar dados.";
       setError(message);
-      // Em caso de erro, reverter para os iniciais ou vazio para não quebrar a UI
+
       if (!(isInitialContextLoad && initialProdutos && initialProdutos.length > 0)) {
         setProdutos(initialProdutos || []);
       }
@@ -233,21 +253,15 @@ export function EstoqueProvider({ children, initialProdutos, initialPedidos, ini
 
   useEffect(() => {
     console.log("CTX useEffect: Carregando dados iniciais (produtos e pedidos).");
-    fetchData(true); // true indica que é o carregamento inicial do contexto
-                    // fetchData usará initialProdutos/initialPedidos se disponíveis, senão buscará da API.
-  }, [fetchData]); // fetchData agora depende de initialProdutos e initialPedidos,
-                   // então o useEffect só precisa depender de fetchData.
-
+    fetchData(true); 
+                    
+  }, [fetchData]); 
+                   
   const refreshData = useCallback(() => {
     console.log("CTX: refreshData -> Buscando Produtos e Pedidos da API...");
     fetchData(false); // false para garantir que sempre busque da API, ignorando initial props
   }, [fetchData]);
 
-
-  // ... (suas funções adicionarProduto, removerProduto, etc. permanecem aqui) ...
-  // Lembre-se que elas podem precisar de ajustes se a lógica de refreshData agora afeta ambos.
-  // Por exemplo, adicionarProduto atualiza localmente 'produtos' e depois chama refreshData,
-  // que vai recarregar produtos E pedidos. Se for essa a intenção, está OK.
 
 const adicionarProduto = async (produtoData: Omit<Produto, "id" | "imagensExistentes" | "image" >) => {
   setIsLoading(true);
@@ -518,12 +532,85 @@ const atualizarStatusPedido = async (id: string, status: Pedido["status"]) => {
     }
   }
 
+    // Novas funções para Custos
+  const adicionarCusto = async (custoData: Omit<Custo, "id">) => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const response = await fetch(`${API_BASE_URL}/custos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(custoData),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Erro ao adicionar custo`)
+      }
+      toast.success("Custo adicionado com sucesso!")
+      refreshData()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao adicionar custo."
+      setError(message)
+      toast.error(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const removerCusto = async (id: string) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/custos/${id}`, { method: "DELETE" })
+      if (!response.ok) {
+        throw new Error(`Erro ao remover custo`)
+      }
+      toast.success("Custo removido com sucesso!")
+      refreshData()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao remover custo."
+      setError(message)
+      toast.error(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const atualizarCusto = async (id: string, custoData: Partial<Custo>) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/custos/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(custoData),
+      })
+      if (!response.ok) {
+        throw new Error(`Erro ao atualizar custo`)
+      }
+      toast.success("Custo atualizado com sucesso!")
+      refreshData()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao atualizar custo."
+      setError(message)
+      toast.error(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const marcarCustoPago = async (id: string, dataPagamento: string) => {
+    await atualizarCusto(id, {
+      status: "pago",
+      dataPagamento,
+    })
+  }
+
   return (
     <EstoqueContext.Provider
       value={{
         produtos,
         pedidos,
         perdas,
+        custos,
         isLoading,
         error,
         adicionarProduto,
@@ -536,6 +623,10 @@ const atualizarStatusPedido = async (id: string, status: Pedido["status"]) => {
         adicionarPerda,
         removerPerda,
         atualizarPerda,
+        adicionarCusto,
+        removerCusto,
+        atualizarCusto,
+        marcarCustoPago,
         refreshData,
       }}
     >

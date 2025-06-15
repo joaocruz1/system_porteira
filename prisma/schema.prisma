@@ -52,11 +52,17 @@ model Perdas {
   valorTotal  Decimal
 }
 
-model custos {
-  id          String   @id @default(uuid()) @map("custos_id")
+model Custos {
+  id          String   @id @default(uuid()) @map("custo_id")
+  categoria   String
+  subcategoria String
   descricao   String
   valor       Decimal
-  dataCusto   DateTime @default(now())
-  categoria   String
-  observacoes String
+  dataVencimento   DateTime
+  dataPagamento DateTime
+  status       String
+  fornecedor   String
+  observacoes   String
+  recorrente   Boolean
+  centroCusto  String
 }

@@ -42,6 +42,11 @@ const menuItems = [
     title: "Gestão de Perdas",
     icon: Calculator,
     component: "perdas",
+  },
+  {
+    title: "Gestão de Custos",
+    icon: Calculator,
+    component: "custos",
   }
 ]
 

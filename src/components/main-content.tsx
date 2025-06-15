@@ -6,6 +6,7 @@ import { GestaoVendas } from "@/components/gestao-vendas"
 import { Relatorios } from "@/components/relatorios"
 import { useNavigation } from "@/components/navigation-context"
 import { GestaoPerdas } from "@/components/gestao-perdas"
+import { GestaoCustosMetalLaser } from "./gestao-custos"
 
 export function MainContent() {
   const { activeComponent } = useNavigation()
@@ -22,6 +23,8 @@ export function MainContent() {
         return <Relatorios />
       case "perdas":
         return <GestaoPerdas />
+      case "custos":
+        return <GestaoCustosMetalLaser />
       default:
         return <Dashboard />
     }

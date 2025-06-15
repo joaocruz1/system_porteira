@@ -71,11 +71,17 @@ export async function GET(request: NextRequest) {
         const custos = await prisma.custos.findMany({
             orderBy: [
                 { id: "desc" },
+                { categoria: "asc" },
+                { subcategoria: "asc" },
                 { descricao: "asc" },
                 { valor: "asc" },
-                { dataCusto: "asc" },
-                { categoria: "asc" },
+                { dataVencimento: "asc" },
+                { dataPagamento: "asc" },
+                { status: "asc" },
+                { fornecedor: "asc" },
                 { observacoes: "asc" },
+                {recorrente : "asc"},
+                {centroCusto : "asc"}
             ],
         });
         return NextResponse.json(custos, { status: 200 });

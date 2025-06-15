@@ -213,16 +213,33 @@ const categoriasCustos = {
   },
 }
 
+type StatusCusto = "pendente" | "pago" | "vencido"
+type CategoriaCusto = keyof typeof categoriasCustos
+
+interface FormCusto {
+  categoria: CategoriaCusto
+  subcategoria: string
+  descricao: string
+  valor: number
+  dataVencimento: string
+  dataPagamento: string
+  status: StatusCusto
+  fornecedor: string
+  observacoes: string
+  recorrente: boolean
+  centroCusto: string
+}
+
 export function GestaoCustosMetalLaser() {
   const { custos, adicionarCusto, removerCusto, atualizarCusto, marcarCustoPago } = useEstoque()
 
   const [dialogAberto, setDialogAberto] = useState(false)
   const [custoEditando, setCustoEditando] = useState<Custo | null>(null)
   const [filtroCategoria, setFiltroCategoria] = useState("todas")
-  const [filtroStatus, setFiltroStatus] = useState("todos")
+  const [filtroStatus, setFiltroStatus] = useState<StatusCusto | "todos">("todos")
   const [filtroPeriodo, setFiltroPeriodo] = useState("mes-atual")
 
-  const initialNovoCusto = {
+  const initialNovoCusto : FormCusto = {
     categoria: "materia-prima" as keyof typeof categoriasCustos,
     subcategoria: "",
     descricao: "",
@@ -540,7 +557,7 @@ export function GestaoCustosMetalLaser() {
             </div>
             <div>
               <Label>Status</Label>
-              <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+              <Select value={filtroStatus} onValueChange={(value: StatusCusto | "todos") => setFiltroStatus(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
