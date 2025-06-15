@@ -479,29 +479,48 @@ const atualizarStatusPedido = async (id: string, status: Pedido["status"]) => {
       setIsLoading(false)
     }
   }
+  
 
   const adicionarCusto = async (custoData: Omit<Custo, "id">) => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const response = await fetch(`${API_BASE_URL}/custos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(custoData),
-      })
+      setIsLoading(true);
+      setError(null);
 
-      if (!response.ok) {
-        throw new Error(`Erro ao adicionar custo`)
+      try {
+          // 1. Criar uma instância de FormData
+          const formData = new FormData();
+
+          // 2. Anexar cada campo do objeto de custo ao FormData
+          // O FormData converte todos os valores para string, o que é esperado pela API.
+          Object.entries(custoData).forEach(([key, value]) => {
+              // Ignora campos nulos ou indefinidos para não enviá-los
+              if (value !== null && value !== undefined) {
+                  formData.append(key, String(value));
+              }
+          });
+
+          // 3. Fazer a requisição POST com o FormData
+          const response = await fetch(`${API_BASE_URL}/custos`, {
+              method: "POST",
+              // IMPORTANTE: Não defina o 'Content-Type'. O navegador fará isso
+              // automaticamente com o boundary correto para multipart/form-data.
+              body: formData,
+          });
+
+          if (!response.ok) {
+              const errorData = await response.json();
+              // Lança um erro com mais detalhes, se a API fornecer
+              throw new Error(errorData.error || `Erro ao adicionar custo`);
+          }
+
+          toast.success("Custo adicionado com sucesso!");
+          refreshData();
+      } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Erro desconhecido ao adicionar custo.";
+          setError(message);
+          toast.error(message);
+      } finally {
+          setIsLoading(false);
       }
-      toast.success("Custo adicionado com sucesso!")
-      refreshData()
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erro ao adicionar custo."
-      setError(message)
-      toast.error(message)
-    } finally {
-      setIsLoading(false)
-    }
   }
 
   const removerCusto = async (id: string) => {
@@ -550,7 +569,7 @@ const atualizarStatusPedido = async (id: string, status: Pedido["status"]) => {
       dataPagamento,
     })
   }
-  console.log("-----------------------custos-----------------------", custos)
+  
   return (
     <EstoqueContext.Provider
       value={{

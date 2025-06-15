@@ -1,6 +1,6 @@
 "use client"
 
-import { BarChart3, Package, ShoppingCart, Home, Calculator } from "lucide-react"
+import { BarChart3, Package, ShoppingCart, Home, Calculator, CircleDollarSign } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -45,7 +45,7 @@ const menuItems = [
   },
   {
     title: "Gestão de Custos",
-    icon: Calculator,
+    icon: CircleDollarSign,
     component: "custos",
   }
 ]

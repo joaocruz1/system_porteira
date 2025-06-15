@@ -59,7 +59,7 @@ model Custos {
   descricao   String
   valor       Decimal
   dataVencimento   DateTime
-  dataPagamento DateTime
+  dataPagamento DateTime?
   status       String
   fornecedor   String
   observacoes   String

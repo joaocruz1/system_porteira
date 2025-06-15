@@ -45,22 +45,7 @@ const categoriasCustos = {
     icon: Package,
     color: "bg-blue-100 text-blue-800",
     subcategorias: [
-      "Copos de Vidro",
-      "Copos de Acrílico",
-      "Copos de Metal",
-      "Facas de Aço Inox",
-      "Facas de Cerâmica",
-      "Chaveiros de Metal",
-      "Chaveiros de Acrílico",
-      "Garrafas Térmicas",
-      "Squeezes Plásticos",
-      "Canecas de Porcelana",
-      "Canecas de Metal",
-      "Utensílios de Cozinha",
-      "Materiais para Escritório",
-      "Embalagens",
-      "Etiquetas e Adesivos",
-      "Outros Materiais",
+      "Copos de Vidro", "Copos de Acrílico", "Copos de Metal", "Facas de Aço Inox", "Facas de Cerâmica", "Chaveiros de Metal", "Chaveiros de Acrílico", "Garrafas Térmicas", "Squeezes Plásticos", "Canecas de Porcelana", "Canecas de Metal", "Utensílios de Cozinha", "Materiais para Escritório", "Embalagens", "Etiquetas e Adesivos", "Outros Materiais",
     ],
   },
   "equipamentos-laser": {
@@ -68,18 +53,7 @@ const categoriasCustos = {
     icon: Zap,
     color: "bg-purple-100 text-purple-800",
     subcategorias: [
-      "Manutenção Máquina Laser",
-      "Peças de Reposição Laser",
-      "Lentes e Espelhos",
-      "Tubos de Laser CO2",
-      "Software de Gravação",
-      "Calibração de Equipamentos",
-      "Energia Elétrica - Laser",
-      "Gases para Laser",
-      "Mesa de Trabalho",
-      "Sistema de Exaustão",
-      "Compressor de Ar",
-      "Outros Equipamentos",
+      "Manutenção Máquina Laser", "Peças de Reposição Laser", "Lentes e Espelhos", "Tubos de Laser CO2", "Software de Gravação", "Calibração de Equipamentos", "Energia Elétrica - Laser", "Gases para Laser", "Mesa de Trabalho", "Sistema de Exaustão", "Compressor de Ar", "Outros Equipamentos",
     ],
   },
   "recursos-humanos": {
@@ -87,22 +61,7 @@ const categoriasCustos = {
     icon: Users,
     color: "bg-green-100 text-green-800",
     subcategorias: [
-      "Salários",
-      "Comissões de Vendas",
-      "Comissões de Produção",
-      "Horas Extras",
-      "13º Salário",
-      "Férias",
-      "FGTS",
-      "INSS Patronal",
-      "Vale Transporte",
-      "Vale Alimentação",
-      "Plano de Saúde",
-      "Seguro de Vida",
-      "Treinamentos",
-      "Uniformes",
-      "EPI - Equipamentos de Proteção",
-      "Outros Benefícios",
+        "Salários", "Comissões de Vendas", "Comissões de Produção", "Horas Extras", "13º Salário", "Férias", "FGTS", "INSS Patronal", "Vale Transporte", "Vale Alimentação", "Plano de Saúde", "Seguro de Vida", "Treinamentos", "Uniformes", "EPI - Equipamentos de Proteção", "Outros Benefícios",
     ],
   },
   operacional: {
@@ -110,18 +69,7 @@ const categoriasCustos = {
     icon: Building,
     color: "bg-orange-100 text-orange-800",
     subcategorias: [
-      "Aluguel do Galpão",
-      "Energia Elétrica Geral",
-      "Água e Esgoto",
-      "Internet e Telefone",
-      "Segurança e Monitoramento",
-      "Limpeza e Conservação",
-      "Seguro do Imóvel",
-      "IPTU",
-      "Manutenção Predial",
-      "Climatização",
-      "Iluminação",
-      "Outros Custos Operacionais",
+      "Aluguel do Galpão", "Energia Elétrica Geral", "Água e Esgoto", "Internet e Telefone", "Segurança e Monitoramento", "Limpeza e Conservação", "Seguro do Imóvel", "IPTU", "Manutenção Predial", "Climatização", "Iluminação", "Outros Custos Operacionais",
     ],
   },
   "marketing-vendas": {
@@ -129,18 +77,7 @@ const categoriasCustos = {
     icon: TrendingUp,
     color: "bg-pink-100 text-pink-800",
     subcategorias: [
-      "Google Ads",
-      "Facebook Ads",
-      "Instagram Ads",
-      "Material Gráfico",
-      "Catálogos e Folders",
-      "Site e E-commerce",
-      "Fotografia de Produtos",
-      "Eventos e Feiras",
-      "Brindes Promocionais",
-      "Comissão Representantes",
-      "Marketing Digital",
-      "Outros Custos de Marketing",
+      "Google Ads", "Facebook Ads", "Instagram Ads", "Material Gráfico", "Catálogos e Folders", "Site e E-commerce", "Fotografia de Produtos", "Eventos e Feiras", "Brindes Promocionais", "Comissão Representantes", "Marketing Digital", "Outros Custos de Marketing",
     ],
   },
   administrativo: {
@@ -148,17 +85,7 @@ const categoriasCustos = {
     icon: Building,
     color: "bg-gray-100 text-gray-800",
     subcategorias: [
-      "Contabilidade",
-      "Assessoria Jurídica",
-      "Consultoria Empresarial",
-      "Licenças e Alvarás",
-      "Certificações",
-      "Material de Escritório",
-      "Software de Gestão",
-      "Backup e Armazenamento",
-      "Correios e Sedex",
-      "Cartório",
-      "Outros Custos Administrativos",
+      "Contabilidade", "Assessoria Jurídica", "Consultoria Empresarial", "Licenças e Alvarás", "Certificações", "Material de Escritório", "Software de Gestão", "Backup e Armazenamento", "Correios e Sedex", "Cartório", "Outros Custos Administrativos",
     ],
   },
   financeiro: {
@@ -166,14 +93,7 @@ const categoriasCustos = {
     icon: DollarSign,
     color: "bg-red-100 text-red-800",
     subcategorias: [
-      "Juros de Empréstimos",
-      "Juros de Financiamentos",
-      "Taxas Bancárias",
-      "Cartão de Crédito",
-      "Antecipação de Recebíveis",
-      "IOF",
-      "Multas e Juros",
-      "Outros Custos Financeiros",
+      "Juros de Empréstimos", "Juros de Financiamentos", "Taxas Bancárias", "Cartão de Crédito", "Antecipação de Recebíveis", "IOF", "Multas e Juros", "Outros Custos Financeiros",
     ],
   },
   "logistica-transporte": {
@@ -181,17 +101,7 @@ const categoriasCustos = {
     icon: Truck,
     color: "bg-yellow-100 text-yellow-800",
     subcategorias: [
-      "Frete de Compras",
-      "Frete de Vendas",
-      "Combustível",
-      "Manutenção Veículos",
-      "Seguro Veículos",
-      "IPVA e Licenciamento",
-      "Pedágio",
-      "Estacionamento",
-      "Motoboy",
-      "Embalagens para Envio",
-      "Outros Custos de Transporte",
+      "Frete de Compras", "Frete de Vendas", "Combustível", "Manutenção Veículos", "Seguro Veículos", "IPVA e Licenciamento", "Pedágio", "Estacionamento", "Motoboy", "Embalagens para Envio", "Outros Custos de Transporte",
     ],
   },
   "impostos-taxas": {
@@ -199,25 +109,16 @@ const categoriasCustos = {
     icon: AlertCircle,
     color: "bg-indigo-100 text-indigo-800",
     subcategorias: [
-      "Simples Nacional",
-      "ICMS",
-      "IPI",
-      "PIS/COFINS",
-      "ISS",
-      "IRPJ",
-      "CSLL",
-      "Taxas Municipais",
-      "Taxas Estaduais",
-      "Outros Impostos",
+      "Simples Nacional", "ICMS", "IPI", "PIS/COFINS", "ISS", "IRPJ", "CSLL", "Taxas Municipais", "Taxas Estaduais", "Outros Impostos",
     ],
   },
-}
+} as const; // Adicionado 'as const' para tipagem mais forte
 
 type StatusCusto = "pendente" | "pago" | "vencido"
-type CategoriaCusto = keyof typeof categoriasCustos
+type CategoriaCustoKey = keyof typeof categoriasCustos
 
 interface FormCusto {
-  categoria: CategoriaCusto
+  categoria: CategoriaCustoKey
   subcategoria: string
   descricao: string
   valor: number
@@ -230,17 +131,26 @@ interface FormCusto {
   centroCusto: string
 }
 
+// **NOVO:** Função para encontrar a chave da categoria a partir da chave ou do rótulo
+const getCategoryKey = (categoriaValue: string): CategoriaCustoKey | undefined => {
+    if (Object.keys(categoriasCustos).includes(categoriaValue)) {
+        return categoriaValue as CategoriaCustoKey;
+    }
+    const entry = Object.entries(categoriasCustos).find(([, value]) => value.label === categoriaValue);
+    return entry ? entry[0] as CategoriaCustoKey : undefined;
+}
+
 export function GestaoCustosMetalLaser() {
   const { custos, adicionarCusto, removerCusto, atualizarCusto, marcarCustoPago } = useEstoque()
-
   const [dialogAberto, setDialogAberto] = useState(false)
   const [custoEditando, setCustoEditando] = useState<Custo | null>(null)
   const [filtroCategoria, setFiltroCategoria] = useState("todas")
   const [filtroStatus, setFiltroStatus] = useState<StatusCusto | "todos">("todos")
-  const [filtroPeriodo, setFiltroPeriodo] = useState("mes-atual")
+  // **CORREÇÃO 1:** Alterado o período padrão para 'todos' para exibir os custos ao carregar
+  const [filtroPeriodo, setFiltroPeriodo] = useState("todos")
 
   const initialNovoCusto : FormCusto = {
-    categoria: "materia-prima" as keyof typeof categoriasCustos,
+    categoria: "materia-prima",
     subcategoria: "",
     descricao: "",
     valor: 0,
@@ -260,14 +170,14 @@ export function GestaoCustosMetalLaser() {
     if (novoCusto.descricao && novoCusto.valor > 0) {
       const custoData = {
         ...novoCusto,
-        categoria: novoCusto.categoria as any, // Conversão para o tipo esperado
+        valor: Number(novoCusto.valor), // Garantir que o valor é numérico
       }
 
       if (custoEditando) {
-        await atualizarCusto(custoEditando.id, custoData)
+        await atualizarCusto(custoEditando.id, custoData as any)
         setCustoEditando(null)
       } else {
-        await adicionarCusto(custoData)
+        await adicionarCusto(custoData as any)
       }
       setDialogAberto(false)
       setNovoCusto(initialNovoCusto)
@@ -275,18 +185,20 @@ export function GestaoCustosMetalLaser() {
   }
 
   const handleEdit = (custo: Custo) => {
+    // **CORREÇÃO:** Garante que a categoria correta (a chave) seja usada ao editar
+    const categoriaKey = getCategoryKey(custo.categoria) || "materia-prima";
     setNovoCusto({
-      categoria: custo.categoria as keyof typeof categoriasCustos,
+      categoria: categoriaKey,
       subcategoria: custo.subcategoria,
       descricao: custo.descricao,
-      valor: custo.valor,
-      dataVencimento: custo.dataVencimento,
-      dataPagamento: custo.dataPagamento || "",
+      valor: Number(custo.valor), // Garante que o valor é numérico
+      dataVencimento: custo.dataVencimento.split("T")[0], // Formata para o input date
+      dataPagamento: custo.dataPagamento ? custo.dataPagamento.split("T")[0] : "",
       status: custo.status,
       fornecedor: custo.fornecedor || "",
       observacoes: custo.observacoes || "",
-      recorrente: false,
-      centroCusto: "",
+      recorrente: custo.recorrente || false,
+      centroCusto: custo.centroCusto || "",
     })
     setCustoEditando(custo)
     setDialogAberto(true)
@@ -319,14 +231,26 @@ export function GestaoCustosMetalLaser() {
     }
   }
 
-  // Filtros aplicados
-  const custosFiltrados = custos.filter((custo) => {
-    const matchCategoria = filtroCategoria === "todas" || custo.categoria === filtroCategoria
+  // **CORREÇÃO 2 e 3:** Lógica de filtro ajustada para lidar com chaves/rótulos e valores como string
+  const custosNormalizados = custos.map(custo => ({
+      ...custo,
+      valor: Number(custo.valor), // Garante que o valor é numérico para todos os cálculos
+      categoriaKey: getCategoryKey(custo.categoria), // Adiciona a chave da categoria correta ao objeto
+  }));
+
+
+  const custosFiltrados = custosNormalizados.filter((custo) => {
+    // Se a chave da categoria não for encontrada, o custo não é exibido
+    if (!custo.categoriaKey) return false;
+
+    const matchCategoria = filtroCategoria === "todas" || custo.categoriaKey === filtroCategoria
     const matchStatus = filtroStatus === "todos" || custo.status === filtroStatus
 
     let matchPeriodo = true
     if (filtroPeriodo !== "todos") {
       const hoje = new Date()
+      // Remove a hora da data para evitar problemas de fuso horário na comparação
+      hoje.setHours(0, 0, 0, 0); 
       const dataCusto = new Date(custo.dataVencimento)
 
       switch (filtroPeriodo) {
@@ -334,13 +258,16 @@ export function GestaoCustosMetalLaser() {
           matchPeriodo = dataCusto.getMonth() === hoje.getMonth() && dataCusto.getFullYear() === hoje.getFullYear()
           break
         case "mes-anterior":
-          const mesAnterior = new Date(hoje.getFullYear(), hoje.getMonth() - 1)
+          const mesAnterior = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)
           matchPeriodo =
             dataCusto.getMonth() === mesAnterior.getMonth() && dataCusto.getFullYear() === mesAnterior.getFullYear()
           break
         case "trimestre":
-          const inicioTrimestre = new Date(hoje.getFullYear(), Math.floor(hoje.getMonth() / 3) * 3)
-          matchPeriodo = dataCusto >= inicioTrimestre
+          const trimestreAtual = Math.floor(hoje.getMonth() / 3);
+          const anoAtual = hoje.getFullYear();
+          const dataCustoTrimestre = Math.floor(dataCusto.getMonth() / 3);
+          const dataCustoAno = dataCusto.getFullYear();
+          matchPeriodo = dataCustoTrimestre === trimestreAtual && dataCustoAno === anoAtual;
           break
       }
     }
@@ -353,21 +280,22 @@ export function GestaoCustosMetalLaser() {
   const custosPendentes = custosFiltrados.filter((c) => c.status === "pendente")
   const custosVencidos = custosFiltrados.filter((c) => {
     const hoje = new Date()
+    hoje.setHours(0, 0, 0, 0);
     const vencimento = new Date(c.dataVencimento)
-    return c.status === "pendente" && vencimento < hoje
+    return c.status !== "pago" && vencimento < hoje // Alterado para incluir pendentes e vencidos
   })
   const custosPagos = custosFiltrados.filter((c) => c.status === "pago")
 
   // Análise por categoria
   const custosPorCategoria = Object.entries(categoriasCustos)
-    .map(([key, categoria]) => {
-      const custosCategoria = custosFiltrados.filter((c) => c.categoria === key)
+    .map(([key, categoriaInfo]) => {
+      const custosCategoria = custosFiltrados.filter((c) => c.categoriaKey === key)
       const total = custosCategoria.reduce((acc, c) => acc + c.valor, 0)
       return {
         categoria: key,
-        label: categoria.label,
-        icon: categoria.icon,
-        color: categoria.color,
+        label: categoriaInfo.label,
+        icon: categoriaInfo.icon,
+        color: categoriaInfo.color,
         total,
         quantidade: custosCategoria.length,
       }
@@ -382,7 +310,13 @@ export function GestaoCustosMetalLaser() {
           <p className="text-muted-foreground">Controle completo de custos da empresa de impressão a laser</p>
         </div>
 
-        <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
+        <Dialog open={dialogAberto} onOpenChange={(aberto) => {
+          setDialogAberto(aberto);
+          if (!aberto) {
+            setCustoEditando(null);
+            setNovoCusto(initialNovoCusto);
+          }
+        }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -402,7 +336,7 @@ export function GestaoCustosMetalLaser() {
                   </Label>
                   <Select
                     value={novoCusto.categoria}
-                    onValueChange={(value: keyof typeof categoriasCustos) =>
+                    onValueChange={(value: CategoriaCustoKey) =>
                       setNovoCusto({
                         ...novoCusto,
                         categoria: value,
@@ -589,7 +523,7 @@ export function GestaoCustosMetalLaser() {
                 onClick={() => {
                   setFiltroCategoria("todas")
                   setFiltroStatus("todos")
-                  setFiltroPeriodo("mes-atual")
+                  setFiltroPeriodo("todos") // Alterado para 'todos' ao limpar
                 }}
               >
                 Limpar Filtros
@@ -607,7 +541,6 @@ export function GestaoCustosMetalLaser() {
         </TabsList>
 
         <TabsContent value="resumo" className="space-y-4">
-          {/* Cards de Resumo */}
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -671,28 +604,30 @@ export function GestaoCustosMetalLaser() {
               <CardDescription>Análise detalhada dos custos por categoria</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {custosPorCategoria.map((item) => {
-                  const IconComponent = item.icon
-                  const percentual = totalCustos > 0 ? (item.total / totalCustos) * 100 : 0
+                <div className="space-y-2">
+                    {custosPorCategoria.map((item) => {
+                    const IconComponent = item.icon
+                    const percentual = totalCustos > 0 ? (item.total / totalCustos) * 100 : 0
 
-                  return (
-                    <div key={item.categoria} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <IconComponent className="h-5 w-5" />
-                        <div>
-                          <div className="font-medium">{item.label}</div>
-                          <div className="text-sm text-muted-foreground">{item.quantidade} custos</div>
+                    return (
+                        <div key={item.categoria} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-full ${item.color}`}>
+                                <IconComponent className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <div className="font-medium">{item.label}</div>
+                                <div className="text-sm text-muted-foreground">{item.quantidade} custos</div>
+                            </div>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-semibold">R$ {item.total.toFixed(2)}</div>
-                        <div className="text-sm text-muted-foreground">{percentual.toFixed(1)}%</div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                        <div className="text-right">
+                            <div className="font-semibold">R$ {item.total.toFixed(2)}</div>
+                            <div className="text-sm text-muted-foreground">{percentual.toFixed(1)}%</div>
+                        </div>
+                        </div>
+                    )
+                    })}
+                </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -721,7 +656,7 @@ export function GestaoCustosMetalLaser() {
                 </TableHeader>
                 <TableBody>
                   {custosFiltrados.map((custo) => {
-                    const categoria = categoriasCustos[custo.categoria as keyof typeof categoriasCustos]
+                    const categoriaInfo = custo.categoriaKey ? categoriasCustos[custo.categoriaKey] : null;
                     return (
                       <TableRow key={custo.id}>
                         <TableCell>
@@ -731,12 +666,14 @@ export function GestaoCustosMetalLaser() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge className={categoria?.color || "bg-gray-100 text-gray-800"}>
-                            {categoria?.label || custo.categoria}
-                          </Badge>
+                          {categoriaInfo && (
+                            <Badge className={categoriaInfo.color}>
+                              {categoriaInfo.label}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell>R$ {custo.valor.toFixed(2)}</TableCell>
-                        <TableCell>{new Date(custo.dataVencimento).toLocaleDateString("pt-BR")}</TableCell>
+                        <TableCell>{new Date(custo.dataVencimento).toLocaleDateString("pt-BR", {timeZone: 'UTC'})}</TableCell>
                         <TableCell>
                           <Badge
                             variant={getStatusVariant(custo.status) as any}
@@ -752,7 +689,7 @@ export function GestaoCustosMetalLaser() {
                             <Button variant="outline" size="sm" onClick={() => handleEdit(custo)}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            {custo.status === "pendente" && (
+                            {custo.status !== "pago" && (
                               <Button variant="default" size="sm" onClick={() => handleMarcarPago(custo.id)}>
                                 <CheckCircle className="h-4 w-4" />
                               </Button>

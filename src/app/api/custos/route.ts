@@ -14,53 +14,74 @@ interface ErrorResponse {
 
 
 export async function POST(request: NextRequest) {
-    console.log("====== [APP ROUTER - POST /api/custos] Adicionando gostos ======");
-    try {
-        const formData = await request.formData();
+  console.log("====== [API ROUTE - POST /api/custos] Adicionando Custo via FormData ======");
+  
+  try {
+    const formData = await request.formData();
 
-        const descricao = formData.get('descricao') as string | null;
-        const valorStr = formData.get('valor') as string | null;
-        const dataCustoStr = formData.get('dataCusto') as string | null;
-        const categoria = formData.get('categoria') as string | null;
-        const observacoes = formData.get('observacoes') as string | null;
+    const descricao = formData.get('descricao') as string | null;
+    const valorStr = formData.get('valor') as string | null;
+    const dataVencimentoStr = formData.get('dataVencimento') as string | null;
+    const dataPagamentoStr = formData.get('dataPagamento') as string | null;
+    const categoria = formData.get('categoria') as string | null;
+    const subcategoria = formData.get('subcategoria') as string | null;
+    const status = formData.get('status') as string | null;
+    const fornecedor = formData.get('fornecedor') as string | null;
+    const observacoes = formData.get('observacoes') as string | null;
+    const recorrenteStr = formData.get('recorrente') as string | null;
+    const centroCusto = formData.get('centroCusto') as string | null;
 
-        const dataCustoISO = dataCustoStr ? new Date(dataCustoStr) : undefined;
-        
-        if (!descricao) {
-            return NextResponse.json<ErrorResponse>({ error: 'Campo "descricao" é obrigatório.' }, { status: 400 });
-        }
-
-        const valor = valorStr ? parseFloat(valorStr) : 0;
-
-        if (isNaN(valor)) {
-            return NextResponse.json<ErrorResponse>({ error: '"valor" deve ser um número válido.' }, { status: 400 });
-        }
-
-        const novaPerdaData: any = {
-            descricao,
-            valor,
-            dataCusto: dataCustoISO || undefined,
-            categoria: categoria || undefined,
-            observacoes: observacoes || undefined,
-        };
-
-        const novoCusto = await prisma.custos.create({
-            data: novaPerdaData,
-        });
-
-        return NextResponse.json(novoCusto, { status: 201 });
-
-    } catch (error: unknown) {
-        console.error('[API POST /custos] Erro ao adicionar custo:', error);
-        let errorMessage = 'Erro desconhecido ao adicionar custo.';
-        if (error instanceof Error) {
-            errorMessage = error.message;
-        }
+    if (!descricao || !valorStr || !dataVencimentoStr || !categoria || !subcategoria || !status) {
         return NextResponse.json<ErrorResponse>(
-            { error: 'Falha ao adicionar custo ao banco de dados.', details: errorMessage },
-            { status: 500 }
+          { error: 'Campos obrigatórios estão faltando. Verifique: descricao, valor, dataVencimento, categoria, subcategoria, status.' },
+          { status: 400 }
         );
     }
+    
+    const valor = parseFloat(valorStr);
+    if (isNaN(valor)) {
+        return NextResponse.json<ErrorResponse>({ error: '"valor" deve ser um número válido.' }, { status: 400 });
+    }
+
+    const dataVencimento = new Date(dataVencimentoStr);
+    
+    const dataPagamento = dataPagamentoStr ? new Date(dataPagamentoStr) : undefined;
+
+    const recorrente = recorrenteStr === 'true';
+
+    const custoData = {
+        descricao,
+        valor,
+        dataVencimento,
+        dataPagamento,
+        categoria,
+        subcategoria,
+        status,
+        recorrente,
+        // CORREÇÃO: Fornecer uma string vazia como padrão se o campo for nulo, para corresponder ao tipo esperado 'string'.
+        fornecedor: fornecedor || '',
+        observacoes: observacoes || '',
+        centroCusto: centroCusto || '',
+    };
+
+    const novoCusto = await prisma.custos.create({
+      data: custoData,
+    });
+    
+    console.log("====== Custo adicionado com sucesso via FormData ======", novoCusto.id);
+    return NextResponse.json(novoCusto, { status: 201 });
+
+  } catch (error: unknown) {
+    console.error('[API POST /custos] Erro ao adicionar custo:', error);
+    let errorMessage = 'Erro desconhecido ao adicionar custo.';
+    if (error instanceof Error) {
+        errorMessage = error.message;
+    }
+    return NextResponse.json<ErrorResponse>(
+      { error: 'Falha ao adicionar custo ao banco de dados.', details: errorMessage },
+      { status: 500 }
+    );
+  }
 }
 
 
