@@ -17,8 +17,6 @@ export interface Produto {
   image?: string | null; // URL da imagem principal do produto vinda do backend
 }
 
-// Interface Pedido conforme definida no seu contexto.
-// Lembre-se que será necessário mapear os dados da API para esta estrutura.
 export interface Pedido {
   id: string
   cliente: string // No backend é cliente_infos (JSON com mais detalhes)
@@ -65,35 +63,32 @@ export interface Custo {
   status: "pendente" | "pago" | "vencido"
   fornecedor?: string
   observacoes?: string
+  recorrente?: boolean
+  centroCusto?: string
 }
 
 interface EstoqueContextType {
   produtos: Produto[]
   pedidos: Pedido[]
-  perdas : Perda[]
-  custos : Custo[]
+  perdas: Perda[]
+  custos: Custo[]
   isLoading: boolean
   error: string | null
-  adicionarProduto: (produto: Omit<Produto, "id" | "imagensExistentes" | "image" >) => Promise<void>
+  adicionarProduto: (produto: Omit<Produto, "id" | "imagensExistentes" | "image">) => Promise<void>
   removerProduto: (id: string) => Promise<void>
   atualizarQuantidade: (id: string, quantidade: number) => Promise<void>
   atualizarProdutoExistente: (id: string, novaQuantidade: number) => Promise<void>
-
-  
   criarPedido: (pedido: Omit<Pedido, "id">) => Promise<void>
   atualizarStatusPedido: (id: string, status: Pedido["status"]) => Promise<void>
   darBaixaPedido: (pedidoId: string) => Promise<void>
   refreshData: () => void
-
   adicionarPerda: (perda: Omit<Perda, "id">) => Promise<void>
   removerPerda: (id: string) => Promise<void>
   atualizarPerda: (id: string, perda: Partial<Perda>) => Promise<void>
-
-  adicionarCusto: (custo:Omit<Custo, "id">) => Promise<void>
+  adicionarCusto: (custo: Omit<Custo, "id">) => Promise<void>
   removerCusto: (id: string) => Promise<void>
   atualizarCusto: (id: string, custo: Partial<Custo>) => Promise<void>
   marcarCustoPago: (id: string, dataPagamento: string) => Promise<void>
-
 }
 
 const EstoqueContext = createContext<EstoqueContextType | undefined>(undefined)
@@ -101,7 +96,7 @@ const EstoqueContext = createContext<EstoqueContextType | undefined>(undefined)
 interface EstoqueProviderProps {
   children: ReactNode;
   initialProdutos?: Produto[];
-  initialPedidos?: Pedido[]; 
+  initialPedidos?: Pedido[];
   initialPerdas?: Perda[];
   initialCustos?: Custo[];
 }
@@ -111,155 +106,112 @@ export function EstoqueProvider({ children, initialProdutos, initialPedidos, ini
   const [pedidos, setPedidos] = useState<Pedido[]>(initialPedidos || [])
   const [perdas, setPerdas] = useState<Perda[]>(initialPerdas || [])
   const [custos, setCustos] = useState<Custo[]>(initialCustos || [])
-  const [isLoading, setIsLoading] = useState(true) // Geralmente true no início
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const API_BASE_URL = '/api';
 
-  const fetchData = useCallback(async (isInitialContextLoad = false) => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    console.log("CTX: Iniciando busca de dados (Produtos e Pedidos)...");
 
     try {
-      // 1. Buscar ou Definir Produtos
-      if (isInitialContextLoad && initialProdutos && initialProdutos.length > 0) {
-        console.log("CTX: Usando initialProdutos do servidor.");
-        setProdutos(initialProdutos);
-      } else {
-        console.log("CTX: Buscando produtos da API...");
-        const responseProdutos = await fetch(`${API_BASE_URL}/produto`);
-        if (!responseProdutos.ok) {
-          const errorData = await responseProdutos.json().catch(() => ({}));
-          throw new Error(errorData.details || errorData.error || `Erro ao buscar produtos: ${responseProdutos.statusText} (${responseProdutos.status})`);
+      // Primeiro busca produtos
+      const [produtosResponse, pedidosResponse, perdasResponse, custosResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/produto`),
+        fetch(`${API_BASE_URL}/pedido`),
+        fetch(`${API_BASE_URL}/perdas`),
+        fetch(`${API_BASE_URL}/custos`)
+      ]);
+
+      // Verifica todas as respostas
+      if (!produtosResponse.ok) throw new Error('Falha ao buscar produtos');
+      if (!pedidosResponse.ok) throw new Error('Falha ao buscar pedidos');
+      if (!perdasResponse.ok) throw new Error('Falha ao buscar perdas');
+      if (!custosResponse.ok) throw new Error('Falha ao buscar custos');
+
+      // Processa todas as respostas
+      const produtosData = await produtosResponse.json();
+      const perdasData = await perdasResponse.json();
+      const custosData = await custosResponse.json();
+
+      // Processa pedidos separadamente por ser mais complexo
+      const rawPedidosFromApi = await pedidosResponse.json();
+      if (!Array.isArray(rawPedidosFromApi)) throw new Error('Resposta de pedidos não é um array.');
+
+      const mappedPedidos: Pedido[] = rawPedidosFromApi.map((apiPedido: any) => {
+        let clienteNome = "N/A";
+        let clienteEndereco = "N/A";
+        let clienteTelefone = "N/A";
+        let clienteEmail = "N/A";
+
+        if (apiPedido.cliente_infos && typeof apiPedido.cliente_infos === 'object') {
+          clienteNome = apiPedido.cliente_infos.name || "Nome não informado";
+          clienteEndereco = apiPedido.cliente_infos.address || "Endereço não informado";
+          clienteTelefone = apiPedido.cliente_infos.phone || "Telefone não informado";
+          clienteEmail = apiPedido.cliente_infos.email || "Email não informado";
         }
-        const produtosDataAPI = await responseProdutos.json();
-        if (!Array.isArray(produtosDataAPI) || !produtosDataAPI.every(item => typeof item === 'object' && item && 'id' in item)) {
-          throw new Error("Dados de produtos recebidos da API não são válidos.");
+
+        let produtosPedido: Pedido['produtos'] = [];
+        if (Array.isArray(apiPedido.item)) {
+          produtosPedido = apiPedido.item.map((orderItem: any) => ({
+            produtoId: orderItem.product?.id || orderItem.custom?.id || 'N/A',
+            nome: orderItem.product?.name || orderItem.custom?.productName || 'Produto Desconhecido',
+            quantidade: orderItem.quantity || 0,
+            logotype: orderItem.logoType || "text",
+            preco: orderItem.unitPrice || 0,
+          }));
         }
-        setProdutos(produtosDataAPI);
-        console.log("CTX: Produtos carregados da API:", produtosDataAPI.length);
-      }
 
-
-      if (isInitialContextLoad && initialPedidos && initialPedidos.length > 0) {
-        console.log("CTX: Usando initialPedidos do servidor.");
-        setPedidos(initialPedidos); 
-      } else {
-        console.log("CTX: Buscando pedidos da API...");
-        const responsePedidos = await fetch(`${API_BASE_URL}/pedido`); 
-        if (!responsePedidos.ok) {
-          const errorData = await responsePedidos.json().catch(() => ({}));
-          throw new Error(errorData.details || errorData.error || `Erro ao buscar pedidos: ${responsePedidos.statusText} (${responsePedidos.status})`);
+        let statusPedido: Pedido["status"] = "pendente";
+        const validStatuses: Pedido["status"][] = ["pendente", "processando", "concluido", "cancelado"];
+        if (typeof apiPedido.status === 'string' && validStatuses.includes(apiPedido.status)) {
+          statusPedido = apiPedido.status;
         }
-        const rawPedidosFromApi = await responsePedidos.json();
 
-        if (!Array.isArray(rawPedidosFromApi)) {
-          throw new Error("Dados de pedidos recebidos da API não são um array.");
-        }
-      
-      // Buscar Perdas
-      if (isInitialContextLoad && initialPerdas && initialPerdas.length > 0) {
-        setPerdas(initialPerdas)
-      } else {
-        const responsePerdas = await fetch(`${API_BASE_URL}/perdas`)
-        if (responsePerdas.ok) {
-          const perdasData = await responsePerdas.json()
-          setPerdas(perdasData)
-        }
-      }
+        return {
+          id: apiPedido.id,
+          cliente: clienteNome,
+          endereco: clienteEndereco,
+          cliente_telefone: clienteTelefone,
+          cliente_email: clienteEmail,
+          logo: apiPedido.logo || "",
+          produtos: produtosPedido,
+          total: Number(apiPedido.total) || 0,
+          status: statusPedido,
+          dataPedido: apiPedido.data_pedido ? new Date(apiPedido.data_pedido).toISOString() : new Date().toISOString(),
+        };
+      });
 
-      // Buscar Custos
-      if (isInitialContextLoad && initialCustos && initialCustos.length > 0) {
-        setCustos(initialCustos)
-      } else {
-        const responseCustos = await fetch(`${API_BASE_URL}/custos`)
-        if (responseCustos.ok) {
-          const custosData = await responseCustos.json()
-          setCustos(custosData)
-        }
-      }
-    
-        // Mapeamento dos dados da API para a interface Pedido do contexto
-        const mappedPedidos: Pedido[] = rawPedidosFromApi.map((apiPedido: any) => {
-          let clienteNome = "N/A";
-          let clienteEndereco = "N/A";
-          let clienteTelefone = "N/A";
-          let clienteEmail = "N/A";
+      // Atualiza todos os estados
+      setProdutos(produtosData);
+      setPedidos(mappedPedidos);
+      setPerdas(perdasData);
+      setCustos(custosData);
 
+      console.log("CTX: Dados carregados com sucesso:", {
+        produtos: produtosData.length,
+        pedidos: mappedPedidos.length,
+        perdas: perdasData.length,
+        custos: custosData.length
+      });
 
-          if (apiPedido.cliente_infos) {
-            clienteNome = typeof apiPedido.cliente_infos.name === 'string' ? apiPedido.cliente_infos.name : JSON.stringify(apiPedido.cliente_infos);
-            clienteEndereco = typeof apiPedido.cliente_infos.address === 'string' ? apiPedido.cliente_infos.address : JSON.stringify(apiPedido.cliente_infos);
-            clienteTelefone = typeof apiPedido.cliente_infos.phone === 'string' ? apiPedido.cliente_infos.phone : JSON.stringify(apiPedido.cliente_infos);
-            clienteEmail = typeof apiPedido.cliente_infos.email === 'string' ? apiPedido.cliente_infos.email : JSON.stringify(apiPedido.cliente);
-          }
-
-          let produtosPedido: Pedido['produtos'] = [];
-          if (Array.isArray(apiPedido.item)) {
-            produtosPedido = apiPedido.item.map((orderItem: any) => ({
-              produtoId: orderItem.product?.id || orderItem.custom?.id || 'N/A',
-              nome: orderItem.product?.name || orderItem.custom?.productName || 'Produto Desconhecido',
-              quantidade: orderItem.quantity || 0,
-              LogoType : orderItem.logoType || "",
-              preco: orderItem.unitPrice || 0,
-            }));
-          }
-
-          let statusPedido: Pedido["status"] = "pendente";
-          if (typeof apiPedido.status === 'boolean') { 
-            statusPedido = apiPedido.status ? "concluido" : "pendente"; 
-          } else if (typeof apiPedido.status === 'string') { 
-             const validStatuses: Pedido["status"][] = ["pendente", "processando", "concluido", "cancelado"];
-            if (validStatuses.includes(apiPedido.status)) {
-                statusPedido = apiPedido.status;
-            }
-          }
-
-          return {
-            id: apiPedido.id,
-            cliente: clienteNome,
-            endereco : clienteEndereco,
-            cliente_telefone: clienteTelefone,
-            cliente_email: clienteEmail,
-            logo : apiPedido.logo || "caminho/padrao/ou/string_vazia_se_permitido.png",
-            produtos: produtosPedido,
-            total: Number(apiPedido.total) || 0,
-            status: statusPedido,
-            dataPedido: apiPedido.data_pedido ? new Date(apiPedido.data_pedido).toLocaleDateString('pt-BR') : 'Data Inválida',
-
-          };
-        });
-        setPedidos(mappedPedidos);
-        
-        console.log("CTX: Pedidos carregados e mapeados da API:", mappedPedidos.length);
-      }
     } catch (err) {
-      console.error("CTX: Erro durante fetchData (produtos ou pedidos):", err);
-      const message = (err instanceof Error) ? err.message : "Erro desconhecido ao buscar dados.";
-      setError(message);
-
-      if (!(isInitialContextLoad && initialProdutos && initialProdutos.length > 0)) {
-        setProdutos(initialProdutos || []);
-      }
-      if (!(isInitialContextLoad && initialPedidos && initialPedidos.length > 0)) {
-        setPedidos(initialPedidos || []);
-      }
+      console.error("CTX Error ao carregar dados:", err);
+      setError(err instanceof Error ? err.message : "Erro desconhecido ao carregar dados");
     } finally {
       setIsLoading(false);
-      console.log("CTX: Busca de dados (Produtos e Pedidos) finalizada.");
     }
-  }, [API_BASE_URL, initialProdutos, initialPedidos, initialPerdas]); // Adiciona initialPedidos aqui
+  }, []);
 
   useEffect(() => {
-    console.log("CTX useEffect: Carregando dados iniciais (produtos e pedidos).");
-    fetchData(true); 
-                    
-  }, [fetchData]); 
-                   
+    console.log("CTX useEffect: Carregando dados iniciais.");
+    fetchData();
+  }, [fetchData]);
+
   const refreshData = useCallback(() => {
-    console.log("CTX: refreshData -> Buscando Produtos e Pedidos da API...");
-    fetchData(false); // false para garantir que sempre busque da API, ignorando initial props
+    console.log("CTX: refreshData -> Buscando todos os dados da API...");
+    fetchData();
   }, [fetchData]);
 
 
@@ -286,10 +238,8 @@ const adicionarProduto = async (produtoData: Omit<Produto, "id" | "imagensExiste
       const errorData = await response.json().catch(() => ({ error: `Erro ${response.status} ao adicionar produto: ${response.statusText}` }));
       throw new Error(errorData.error || errorData.message || `Erro ao adicionar produto: ${response.statusText}`);
     }
-    // const novoProdutoAdicionado = await response.json(); // API retorna o produto criado
-    // setProdutos(prev => [...prev, novoProdutoAdicionado]); // Atualiza estado local opcionalmente
     toast.success("Produto Adicionado com Sucesso!");
-    refreshData(); // Recarrega produtos e pedidos
+    refreshData();
   } catch (err: unknown) {
     console.error("Erro ao adicionar produto:", err);
     const message = (err instanceof Error) ? err.message : "Erro desconhecido ao adicionar produto.";
@@ -314,7 +264,7 @@ const removerProduto = async (id: string): Promise<void> => {
       throw new Error(`Erro ao remover produto: ${errorMessage}`);
     }
     toast.success("Produto Removido com Sucesso!");
-    refreshData(); // Recarrega produtos e pedidos
+    refreshData();
   } catch (err: unknown) {
     console.error("Erro na função removerProduto:", err);
     const message = (err instanceof Error) ? err.message : "Erro desconhecido ao remover produto.";
@@ -343,7 +293,7 @@ const atualizarQuantidade = async (id: string, quantidade: number) => {
       throw new Error(`Erro ao atualizar quantidade: ${errorMessage}`);
     }
     toast.success("Quantidade atualizada com Sucesso!");
-    refreshData(); // Recarrega produtos e pedidos
+    refreshData();
   } catch (err: unknown) {
     console.error("Erro na função atualizarQuantidade:", err);
     const message = (err instanceof Error) ? err.message : "Erro desconhecido ao atualizar quantidade.";
@@ -370,7 +320,6 @@ const criarPedido = async (pedidoDataPayload: Omit<Pedido, "id">) => {
 
   const formData = new FormData();
   
-
   formData.append('customerData', JSON.stringify(pedidoDataPayload));
   formData.append('quoteItems', JSON.stringify(pedidoDataPayload.produtos));
   
@@ -398,7 +347,6 @@ const atualizarStatusPedido = async (id: string, status: Pedido["status"]) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Ajuste o endpoint e o corpo da requisição se necessário para sua API
       const response = await fetch(`${API_BASE_URL}/pedido/status/${id}`, { 
         method: "PUT", 
         headers: { "Content-Type": "application/json" },
@@ -438,7 +386,7 @@ const atualizarStatusPedido = async (id: string, status: Pedido["status"]) => {
       throw new Error(`Erro ao atualizar quantidade: ${errorMessage}`);
     }
     toast.success("Pedido Atualizado com Sucesso!");
-    refreshData(); // Recarrega produtos e pedidos
+    refreshData();
   } catch (err: unknown) {
     console.error("Erro na função darBaixaPedido:", err);
     const message = (err instanceof Error) ? err.message : "Erro desconhecido ao atualizar pedido.";
@@ -532,7 +480,6 @@ const atualizarStatusPedido = async (id: string, status: Pedido["status"]) => {
     }
   }
 
-    // Novas funções para Custos
   const adicionarCusto = async (custoData: Omit<Custo, "id">) => {
     setIsLoading(true)
     setError(null)
@@ -603,7 +550,7 @@ const atualizarStatusPedido = async (id: string, status: Pedido["status"]) => {
       dataPagamento,
     })
   }
-
+  console.log("-----------------------custos-----------------------", custos)
   return (
     <EstoqueContext.Provider
       value={{
