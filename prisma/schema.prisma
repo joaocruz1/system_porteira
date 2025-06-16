@@ -41,7 +41,7 @@ model Pedido {
 }
 
 model Perdas {
-  id          String @id @default(uuid()) @map("perda_id")
+  id          String   @id @default(uuid()) @map("perda_id")
   produtoId   String
   quantidade  Int
   image       String
@@ -53,16 +53,16 @@ model Perdas {
 }
 
 model Custos {
-  id          String   @id @default(uuid()) @map("custo_id")
-  categoria   String
-  subcategoria String
-  descricao   String
-  valor       Decimal
-  dataVencimento   DateTime
-  dataPagamento DateTime?
-  status       String
-  fornecedor   String
-  observacoes   String
-  recorrente   Boolean
-  centroCusto  String
+  id             String    @id @default(uuid()) @map("custo_id")
+  categoria      String
+  subcategoria   String
+  descricao      String
+  valor          Decimal
+  dataVencimento DateTime
+  dataPagamento  DateTime?
+  status         String
+  fornecedor     String
+  observacoes    String
+  recorrente     Boolean
+  centroCusto    String
 }
