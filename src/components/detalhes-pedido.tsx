@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Package, User, DollarSign, CheckCircle, XCircle, Clock, Truck, Download } from "lucide-react"
+import { ArrowLeft, Package, User, DollarSign, CheckCircle, XCircle, Clock, Truck, Download, FileText } from "lucide-react"
 import { useEstoque } from "@/components/estoque-context"
+import { useRef, useState } from 'react'; // Importar useRef e useState
 
 interface DetalhesPedidoProps {
   pedidoId: string
@@ -16,6 +17,8 @@ interface DetalhesPedidoProps {
 export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
   const { pedidos, produtos, atualizarStatusPedido, darBaixaPedido } = useEstoque()
   const pedido = pedidos.find((p) => p.id === pedidoId)
+  const pedidoContentRef = useRef<HTMLDivElement>(null); // Referência para o elemento a ser impresso
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false); // Estado para o loading do PDF
 
   if (!pedido) {
     return (
@@ -88,7 +91,7 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.href = url
-      link.download = `pedido-${pedido.id}-logo.jpg`
+      link.download = `pedido-${pedido.id}-logo.svg`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -99,12 +102,138 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
     }
   }
 
+  // --- FUNÇÃO PARA BAIXAR PDF VIA API DO SERVIDOR ---
+  const baixarPDF = async () => {
+    setIsGeneratingPdf(true); // Inicia o estado de loading
+
+    if (!pedidoContentRef.current) {
+      console.error("Elemento de conteúdo do pedido não encontrado para gerar PDF.");
+      alert("Não foi possível gerar o PDF. Conteúdo indisponível.");
+      setIsGeneratingPdf(false);
+      return;
+    }
+
+    try {
+      // Cria um elemento temporário para isolar o HTML que será enviado
+      // Isso é importante para não enviar elementos de UI desnecessários como os próprios botões.
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = pedidoContentRef.current.innerHTML;
+
+      // Opcional: Remover elementos que não devem aparecer no PDF, usando classes
+      // Por exemplo, adicione a classe `no-print` aos botões que não quer no PDF
+      tempDiv.querySelectorAll('.no-print').forEach(el => el.remove());
+
+      // Envia o HTML processado para a API de geração de PDF no servidor
+      const response = await fetch('/api/gerar-pdf-pedido', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+        htmlContent: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              /* Estilos base para o PDF */
+              body { 
+                font-family: 'Arial', sans-serif;
+                line-height: 1.6;
+                color: #333;
+              }
+              .pdf-container {
+                padding: 2cm;
+              }
+              .header {
+                border-bottom: 2px solid #eee;
+                padding-bottom: 10px;
+                margin-bottom: 20px;
+              }
+              .title {
+                font-size: 24px;
+                color: #2c3e50;
+                margin-bottom: 5px;
+              }
+              .subtitle {
+                font-size: 16px;
+                color: #7f8c8d;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+              }
+              th, td {
+                border: 1px solid #ddd;
+                padding: 12px;
+                text-align: left;
+              }
+              th {
+                background-color: #f2f2f2;
+              }
+              .footer {
+                margin-top: 30px;
+                padding-top: 10px;
+                border-top: 1px solid #eee;
+                font-size: 12px;
+                color: #95a5a6;
+                text-align: center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="pdf-container">
+              <div class="header">
+                <h1 class="title">Pedido #${pedido.id}</h1>
+                <p class="subtitle">Data: ${new Date().toLocaleDateString()}</p>
+              </div>
+              
+              ${tempDiv.innerHTML}
+              
+              <div class="footer">
+                <p>Sistema Porteira - ${new Date().getFullYear()}</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `,
+        pedidoId: pedido.id,
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro desconhecido na geração do PDF.');
+      }
+
+      // Recebe o Blob do PDF e cria um URL para download
+      const pdfBlob = await response.blob();
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `pedido-${pedido.id}-detalhes.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error("Erro ao gerar PDF via API:", error);
+      alert(`Ocorreu um erro ao gerar o PDF: ${error instanceof Error ? error.message : String(error)}. Verifique o console.`);
+    } finally {
+      setIsGeneratingPdf(false); // Finaliza o estado de loading
+    }
+  };
+  // --- FIM DA FUNÇÃO DE BAIXAR PDF VIA API ---
+
   return (
-    <div className="space-y-6">
+    // Removido o id="detalhes-pedido-content" para evitar duplicidade com useRef
+    <div ref={pedidoContentRef} className="space-y-6"> 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={onVoltar}>
+          <Button variant="outline" onClick={onVoltar} className="no-print"> {/* Adicione no-print */}
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
           </Button>
@@ -118,6 +247,22 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
           <Badge variant={getStatusVariant(pedido.status)} className="text-sm px-3 py-1">
             {pedido.status.toUpperCase()}
           </Badge>
+          {/* Botão de Download PDF */}
+          <Button 
+            id="download-pdf-button" 
+            variant="ghost" 
+            size="sm" 
+            onClick={baixarPDF} 
+            className="ml-4 no-print" // Adicione no-print
+            disabled={isGeneratingPdf} // Desabilita enquanto gera
+          >
+            {isGeneratingPdf ? 'Gerando...' : (
+              <>
+                <FileText className="mr-2 h-4 w-4" />
+                Baixar PDF
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
@@ -126,7 +271,13 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">Imagem do Pedido</CardTitle>
-              <Button variant="outline" size="sm" onClick={baixarImagem}>
+              <Button 
+                id="download-image-button" 
+                variant="outline" 
+                size="sm" 
+                onClick={baixarImagem}
+                className="no-print" // Adicione no-print
+              >
                 <Download className="mr-2 h-4 w-4" />
                 Baixar Imagem
               </Button>
@@ -145,7 +296,10 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
             </div>
           </CardContent>
         </Card>
-      ) }
+      )}
+
+      {/* Restante do conteúdo do pedido... (status card, info cliente, resumo financeiro, entrega, produtos, ações) */}
+      {/* CERTIFIQUE-SE DE QUE ESTE CONTEÚDO ESTÁ DENTRO DA DIV COM `ref={pedidoContentRef}` */}
 
       {/* Status Card */}
       <Card className={`border-2 ${getStatusColor(pedido.status)}`}>
@@ -248,8 +402,8 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
                 {pedido.status === "concluido"
                   ? "Entregue"
                   : pedido.status === "processando"
-                    ? "Em preparação"
-                    : "Aguardando"}
+                  ? "Em preparação"
+                  : "Aguardando"}
               </p>
             </div>
             {!estoqueDisponivel && pedido.status !== "concluido" && pedido.status !== "cancelado" && (
@@ -342,7 +496,7 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
 
       {/* Ações */}
       {pedido.status !== "concluido" && pedido.status !== "cancelado" && (
-        <Card>
+        <Card className="no-print"> {/* Adicione no-print */}
           <CardHeader>
             <CardTitle>Ações do Pedido</CardTitle>
             <CardDescription>Gerencie o status e processamento do pedido</CardDescription>
