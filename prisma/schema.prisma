@@ -30,6 +30,15 @@ model Produto {
   image        String? // No Prisma é 'image', no DB também é 'image'
 }
 
+model ProdutoVariante {
+  id           String    @id @default(uuid())
+  cor          String
+  quantidade   String
+  image        String? 
+  sku          String
+  productId   String
+}
+
 model Pedido {
   id            String   @id @default(uuid()) @map("pedido_id")
   data_pedido   DateTime
