@@ -71,6 +71,27 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
 
   const estoqueDisponivel = verificarDisponibilidadeEstoque()
 
+  const baixarImagem = async () => {
+    if (!pedido.logo) return;
+
+    try {
+      const response = await fetch(pedido.logo);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const fileExtension = pedido.logo.split('.').pop() || 'svg';
+      link.download = `logo_pedido_${pedido.id}.${fileExtension}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Erro ao baixar a imagem:", error);
+      toast.error("Erro ao baixar a imagem. Verifique o console para mais detalhes.");
+    }
+  };
+
   const baixarPDF = async () => {
     if (!pedidoContentRef.current) {
       toast.error("Erro ao capturar conteúdo para o PDF.");
@@ -137,6 +158,38 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
           </Button>
         </div>
       </div>
+      
+      {/* Bloco da Imagem Restaurado */}
+      {pedido.logo && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">Imagem do Pedido</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={baixarImagem}
+                className="no-print"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Baixar Imagem
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="flex justify-center p-4">
+            <div className="relative w-full max-w-md h-64 rounded-lg overflow-hidden border bg-gray-100">
+              <img
+                src={pedido.logo}
+                alt="Logo do Pedido"
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/placeholder.svg?height=256&width=256";
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-6">
         <Card className={`border-2 ${getStatusColor(pedido.status)}`}>
