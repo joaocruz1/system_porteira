@@ -5,15 +5,28 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { BarChart3, TrendingUp, TrendingDown, Package, ShoppingCart, DollarSign, Download } from "lucide-react"
-import { useEstoque } from "@/components/estoque-context"
-import { useState } from "react"
+import { TrendingUp, TrendingDown, DollarSign, Download, Landmark, ShieldAlert, Loader2 } from "lucide-react"
+import { useEstoque, type Pedido, type Perda, type Custo, type Produto } from "@/components/estoque-context"
+import { useState, useRef } from "react"
 import { useAuth } from "@/components/auth-context"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
+
+// Interface para o resultado do agrupamento de vendas por produto
+interface VendaProduto {
+  produtoId: string;
+  nome: string;
+  quantidade: number;
+  receita: number;
+}
 
 export function Relatorios() {
   const { permissions } = useAuth()
-  const { produtos, pedidos } = useEstoque()
-  const [periodoSelecionado, setPeriodoSelecionado] = useState("mes")
+  const { produtos, pedidos, perdas, custos } = useEstoque()
+  const [periodo, setPeriodo] = useState("este-mes")
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+  const relatorioRef = useRef<HTMLDivElement>(null);
 
   if (!permissions.canViewReports) {
     return (
@@ -26,92 +39,155 @@ export function Relatorios() {
     )
   }
 
-  // Cálculos para relatórios
-  const totalProdutos = produtos.length
-  const totalItensEstoque = produtos.reduce((acc, p) => acc + p.quantidade, 0)
-  const valorTotalEstoque = produtos.reduce((acc, p) => acc + p.quantidade * p.preco, 0)
+  function filterByPeriod<T extends { [key: string]: any }>(items: T[], dateField: keyof T): T[] {
+    if (periodo === 'todos') return items;
+    
+    const now = new Date();
+    let startDate: Date;
 
-  const pedidosConcluidos = pedidos.filter((p) => p.status === "concluido")
-  const vendasTotais = pedidosConcluidos.reduce((acc, p) => acc + p.total, 0)
-  const ticketMedio = pedidosConcluidos.length > 0 ? vendasTotais / pedidosConcluidos.length : 0
+    switch (periodo) {
+      case 'este-mes': startDate = new Date(now.getFullYear(), now.getMonth(), 1); break;
+      case 'ultimos-30-dias': startDate = new Date(); startDate.setDate(now.getDate() - 30); break;
+      case 'este-ano': startDate = new Date(now.getFullYear(), 0, 1); break;
+      default: return items;
+    }
 
-  const produtosMaisVendidos = pedidosConcluidos
-    .flatMap((p) => p.produtos)
-    .reduce(
-      (acc, produto) => {
-        const existing = acc.find((p) => p.produtoId === produto.produtoId)
+    return items.filter((item: T) => {
+      const itemDateValue = item[dateField];
+      if (typeof itemDateValue !== 'string') return false;
+      const itemDate = new Date(itemDateValue);
+      return itemDate >= startDate;
+    });
+  };
+
+  const pedidosFiltrados = filterByPeriod<Pedido>(pedidos, 'dataPedido');
+  const perdasFiltradas = filterByPeriod<Perda>(perdas, 'dataPerda');
+  const custosFiltrados = filterByPeriod<Custo>(custos, 'dataVencimento');
+  
+  const pedidosConcluidosFiltrados = pedidosFiltrados.filter((p: Pedido) => p.status === "concluido");
+  
+  const receitaBruta = pedidosConcluidosFiltrados.reduce((acc, p) => acc + Number(p.total), 0);
+  const totalCustos = custosFiltrados.reduce((acc, c) => acc + Number(c.valor), 0);
+  const totalPerdas = perdasFiltradas.reduce((acc, p) => acc + Number(p.valorTotal || 0), 0);
+  
+  const lucroLiquido = receitaBruta - totalCustos - totalPerdas;
+  const margemLucro = receitaBruta > 0 ? (lucroLiquido / receitaBruta) * 100 : 0;
+  
+  const produtosMaisVendidos: VendaProduto[] = pedidosConcluidosFiltrados
+    .flatMap((p: Pedido) => p.produtos)
+    .reduce((acc: VendaProduto[], produto: Pedido['produtos'][0]) => {
+        const existing = acc.find((p) => p.produtoId === produto.produtoId);
         if (existing) {
-          existing.quantidade += produto.quantidade
-          existing.receita += produto.quantidade * produto.preco
+          existing.quantidade += produto.quantidade;
+          existing.receita += produto.quantidade * produto.preco;
         } else {
           acc.push({
             produtoId: produto.produtoId,
             nome: produto.nome,
             quantidade: produto.quantidade,
             receita: produto.quantidade * produto.preco,
-          })
+          });
         }
-        return acc
-      },
-      [] as Array<{ produtoId: string; nome: string; quantidade: number; receita: number }>,
-    )
-    .sort((a, b) => b.quantidade - a.quantidade)
-    .slice(0, 10)
+        return acc;
+      }, [])
+    .sort((a: VendaProduto, b: VendaProduto) => b.receita - a.receita)
+    .slice(0, 10);
+  
+  const produtosBaixoEstoque = produtos.filter((p: Produto) => p.quantidade < 20).sort((a: Produto, b: Produto) => a.quantidade - b.quantidade);
 
-  const produtosBaixoEstoque = produtos.filter((p) => p.quantidade < 20).sort((a, b) => a.quantidade - b.quantidade)
+  const custosPorCategoria = custosFiltrados.reduce((acc, custo: Custo) => {
+    const categoria = custo.categoria || 'Outros';
+    acc[categoria] = (acc[categoria] || 0) + Number(custo.valor);
+    return acc;
+  }, {} as Record<string, number>);
 
-  const movimentacaoEstoque = pedidosConcluidos
-    .flatMap((p) =>
-      p.produtos.map((prod) => ({
-        data: p.dataPedido,
-        produto: prod.nome,
-        tipo: "saida" as const,
-        quantidade: prod.quantidade,
-        valor: prod.quantidade * prod.preco,
-      })),
-    )
-    .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
-    .slice(0, 20)
+  const perdasPorMotivo = perdasFiltradas.reduce((acc, perda: Perda) => {
+    const motivo = perda.motivo || 'outros';
+    acc[motivo] = (acc[motivo] || 0) + Number(perda.valorTotal || 0);
+    return acc;
+  }, {} as Record<string, number>);
 
-  const vendasPorCategoria = pedidosConcluidos
-    .flatMap((p) => p.produtos)
-    .reduce(
-      (acc, produto) => {
-        const produtoCompleto = produtos.find((pr) => pr.id === produto.produtoId)
-        if (produtoCompleto) {
-          const categoria = produtoCompleto.categoria
-          if (acc[categoria]) {
-            acc[categoria].quantidade += produto.quantidade
-            acc[categoria].receita += produto.quantidade * produto.preco
-          } else {
-            acc[categoria] = {
-              quantidade: produto.quantidade,
-              receita: produto.quantidade * produto.preco,
-            }
-          }
-        }
-        return acc
-      },
-      {} as Record<string, { quantidade: number; receita: number }>,
-    )
+  const exportarRelatorio = async () => {
+    if (!relatorioRef.current) {
+      toast.error("Erro ao capturar conteúdo para o PDF.");
+      return;
+    }
+    setIsGeneratingPdf(true);
 
-  const exportarRelatorio = (tipo: string) => {
-    // Simulação de exportação
-    alert(`Exportando relatório de ${tipo}...`)
-  }
+    try {
+      const contentNode = relatorioRef.current.cloneNode(true) as HTMLElement;
+      contentNode.querySelectorAll('.no-print').forEach(el => el.remove());
+      const htmlContent = contentNode.innerHTML;
+
+      // Mapeia o valor do período para um texto legível
+      const periodLabels: { [key: string]: string } = {
+        'este-mes': 'Este Mês',
+        'ultimos-30-dias': 'Últimos 30 dias',
+        'este-ano': 'Este Ano',
+        'todos': 'Todo o Período'
+      };
+      const periodoLabel = periodLabels[periodo];
+
+      const response = await fetch('/api/gerar-pdf-relatorio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // Envia o conteúdo HTML e também o texto do período
+        body: JSON.stringify({ htmlContent, periodo: periodoLabel }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Falha ao gerar o PDF no servidor.');
+      }
+
+      const pdfBlob = await response.blob();
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Relatorio_Porteira_de_Minas_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success("PDF gerado com sucesso!");
+
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Ocorreu um erro desconhecido.");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div ref={relatorioRef} className="space-y-6">
+      <div className="flex items-center justify-between no-print">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Relatórios</h2>
           <p className="text-muted-foreground">Análises detalhadas do seu negócio</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => exportarRelatorio("geral")}>
-            <Download className="mr-2 h-4 w-4" />
-            Exportar PDF
-          </Button>
+        <div className="flex items-center gap-4">
+            <div>
+                <Label htmlFor="periodo" className="text-sm font-medium">Período</Label>
+                <Select value={periodo} onValueChange={setPeriodo}>
+                    <SelectTrigger id="periodo" className="w-[180px]">
+                        <SelectValue placeholder="Selecione o período" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="este-mes">Este Mês</SelectItem>
+                        <SelectItem value="ultimos-30-dias">Últimos 30 dias</SelectItem>
+                        <SelectItem value="este-ano">Este Ano</SelectItem>
+                        <SelectItem value="todos">Todo o período</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <Button variant="outline" onClick={exportarRelatorio} className="self-end" disabled={isGeneratingPdf}>
+                {isGeneratingPdf ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                )}
+                {isGeneratingPdf ? 'Gerando...' : 'Exportar'}
+            </Button>
         </div>
       </div>
 
@@ -119,282 +195,183 @@ export function Relatorios() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
+            <CardTitle className="text-sm font-medium">Receita Bruta</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ {vendasTotais.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
-              <TrendingUp className="inline h-3 w-3 mr-1" />
-              +12% em relação ao mês anterior
-            </p>
+            <div className="text-2xl font-bold text-green-600">R$ {receitaBruta.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">{pedidosConcluidosFiltrados.length} vendas no período</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Custos Totais</CardTitle>
+            <Landmark className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ {ticketMedio.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
-              <TrendingUp className="inline h-3 w-3 mr-1" />
-              +5% em relação ao mês anterior
-            </p>
+            <div className="text-2xl font-bold text-orange-600">R$ {totalCustos.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">{custosFiltrados.length} custos registrados</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Produtos Vendidos</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Perdas Totais</CardTitle>
+            <ShieldAlert className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{produtosMaisVendidos.reduce((acc, p) => acc + p.quantidade, 0)}</div>
-            <p className="text-xs text-muted-foreground">{pedidosConcluidos.length} pedidos concluídos</p>
+            <div className="text-2xl font-bold text-red-600">R$ {totalPerdas.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">{perdasFiltradas.length} perdas registradas</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor em Estoque</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ {valorTotalEstoque.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
-              {totalItensEstoque} itens em {totalProdutos} produtos
-            </p>
+            <div className={`text-2xl font-bold ${lucroLiquido >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+              R$ {lucroLiquido.toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground">Margem de {margemLucro.toFixed(1)}%</p>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="vendas" className="space-y-4">
-        <TabsList>
+      <Tabs defaultValue="financeiro" className="space-y-4">
+        <TabsList className="no-print">
+          <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
           <TabsTrigger value="vendas">Vendas</TabsTrigger>
           <TabsTrigger value="estoque">Estoque</TabsTrigger>
-          <TabsTrigger value="produtos">Produtos</TabsTrigger>
-          <TabsTrigger value="movimentacao">Movimentação</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="vendas" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Produtos Mais Vendidos</CardTitle>
-                <CardDescription>Top 10 produtos por quantidade vendida</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produto</TableHead>
-                      <TableHead>Qtd Vendida</TableHead>
-                      <TableHead>Receita</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {produtosMaisVendidos.map((produto, index) => (
-                      <TableRow key={produto.produtoId}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">{index + 1}º</Badge>
-                            {produto.nome}
-                          </div>
-                        </TableCell>
-                        <TableCell>{produto.quantidade}</TableCell>
-                        <TableCell>R$ {produto.receita.toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+        <TabsContent value="financeiro" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <Card className="lg:col-span-1">
+                    <CardHeader>
+                        <CardTitle>DRE Simplificado</CardTitle>
+                        <CardDescription>Resultado do período selecionado</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex justify-between items-center p-3 border-b">
+                            <span className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-green-500"/> Receita Bruta</span>
+                            <span className="font-semibold text-green-600">+ R$ {receitaBruta.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 border-b">
+                            <span className="flex items-center gap-2"><TrendingDown className="h-4 w-4 text-orange-500"/> Custos Totais</span>
+                            <span className="font-semibold text-orange-600">- R$ {totalCustos.toFixed(2)}</span>
+                        </div>
+                         <div className="flex justify-between items-center p-3 border-b">
+                            <span className="flex items-center gap-2"><TrendingDown className="h-4 w-4 text-red-500"/> Perdas Totais</span>
+                            <span className="font-semibold text-red-600">- R$ {totalPerdas.toFixed(2)}</span>
+                        </div>
+                        <div className={`flex justify-between items-center p-4 rounded-lg ${lucroLiquido >= 0 ? 'bg-blue-50' : 'bg-red-50'}`}>
+                            <span className="font-bold text-lg">Lucro Líquido</span>
+                            <span className={`font-bold text-lg ${lucroLiquido >= 0 ? 'text-blue-700' : 'text-red-700'}`}>= R$ {lucroLiquido.toFixed(2)}</span>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="lg:col-span-2">
+                     <CardHeader>
+                        <CardTitle>Análise de Custos e Perdas</CardTitle>
+                        <CardDescription>Distribuição dos principais gastos e prejuízos</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-6 md:grid-cols-2">
+                        <div>
+                            <h4 className="font-medium mb-2">Custos por Categoria</h4>
+                            <div className="space-y-2">
+                                {Object.entries(custosPorCategoria).sort(([, a]: [string, number], [, b]: [string, number]) => b - a).map(([categoria, valor]: [string, number]) => (
+                                    <div key={categoria} className="flex justify-between text-sm">
+                                        <span>{categoria.charAt(0).toUpperCase() + categoria.slice(1)}</span>
+                                        <span className="font-mono">R$ {valor.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                         <div>
+                            <h4 className="font-medium mb-2">Perdas por Motivo</h4>
+                             <div className="space-y-2">
+                                {Object.entries(perdasPorMotivo).sort(([, a]: [string, number], [, b]: [string, number]) => b - a).map(([motivo, valor]: [string, number]) => (
+                                    <div key={motivo} className="flex justify-between text-sm">
+                                        <span>{motivo.charAt(0).toUpperCase() + motivo.slice(1)}</span>
+                                        <span className="font-mono">R$ {valor.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </TabsContent>
 
+        <TabsContent value="vendas" className="space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Vendas por Categoria</CardTitle>
-                <CardDescription>Performance de vendas por categoria</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {Object.entries(vendasPorCategoria).map(([categoria, dados]) => (
-                    <div key={categoria} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <p className="font-medium">{categoria}</p>
-                        <p className="text-sm text-muted-foreground">{dados.quantidade} itens vendidos</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold">R$ {dados.receita.toFixed(2)}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {((dados.receita / vendasTotais) * 100).toFixed(1)}% do total
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
+                <CardHeader>
+                    <CardTitle>Top 10 Produtos Mais Vendidos</CardTitle>
+                    <CardDescription>Ranking por receita gerada no período selecionado.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>Produto</TableHead>
+                        <TableHead>Qtd. Vendida</TableHead>
+                        <TableHead className="text-right">Receita Gerada</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {produtosMaisVendidos.map((produto: VendaProduto, index: number) => (
+                        <TableRow key={produto.produtoId}>
+                            <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                                <Badge variant="outline">{index + 1}º</Badge>
+                                {produto.nome}
+                            </div>
+                            </TableCell>
+                            <TableCell>{produto.quantidade}</TableCell>
+                            <TableCell className="text-right">R$ {produto.receita.toFixed(2)}</TableCell>
+                        </TableRow>
+                        ))}
+                    </TableBody>
+                    </Table>
+                </CardContent>
             </Card>
-          </div>
         </TabsContent>
 
         <TabsContent value="estoque" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
+          <Card>
+            <CardHeader>
                 <CardTitle>Produtos com Baixo Estoque</CardTitle>
-                <CardDescription>Produtos que precisam de reposição (menos de 20 unidades)</CardDescription>
-              </CardHeader>
-              <CardContent>
+                <CardDescription>Produtos que precisam de reposição (menos de 20 unidades).</CardDescription>
+            </CardHeader>
+            <CardContent>
                 {produtosBaixoEstoque.length > 0 ? (
-                  <Table>
+                <Table>
                     <TableHeader>
-                      <TableRow>
+                    <TableRow>
                         <TableHead>Produto</TableHead>
                         <TableHead>Categoria</TableHead>
-                        <TableHead>Quantidade</TableHead>
+                        <TableHead>Estoque Atual</TableHead>
                         <TableHead>Status</TableHead>
-                      </TableRow>
+                    </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {produtosBaixoEstoque.map((produto) => (
+                    {produtosBaixoEstoque.map((produto: Produto) => (
                         <TableRow key={produto.id}>
-                          <TableCell className="font-medium">{produto.nome}</TableCell>
-                          <TableCell>{produto.categoria}</TableCell>
-                          <TableCell>{produto.quantidade}</TableCell>
-                          <TableCell>
-                            <Badge variant={produto.quantidade === 0 ? "destructive" : "secondary"}>
-                              {produto.quantidade === 0 ? "Sem estoque" : "Baixo"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <p className="text-muted-foreground text-center py-8">Todos os produtos têm estoque adequado</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Resumo do Estoque</CardTitle>
-                <CardDescription>Visão geral do estoque atual</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 border rounded-lg">
-                    <span>Total de Produtos</span>
-                    <span className="font-bold">{totalProdutos}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 border rounded-lg">
-                    <span>Total de Itens</span>
-                    <span className="font-bold">{totalItensEstoque}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 border rounded-lg">
-                    <span>Valor Total</span>
-                    <span className="font-bold">R$ {valorTotalEstoque.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 border rounded-lg">
-                    <span>Produtos Baixo Estoque</span>
-                    <Badge variant={produtosBaixoEstoque.length > 0 ? "destructive" : "default"}>
-                      {produtosBaixoEstoque.length}
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="produtos" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Análise de Produtos</CardTitle>
-              <CardDescription>Informações detalhadas sobre todos os produtos</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Produto</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead>Estoque</TableHead>
-                    <TableHead>Preço</TableHead>
-                    <TableHead>Valor Total</TableHead>
-                    <TableHead>Vendas</TableHead>
-                    <TableHead>Receita</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {produtos.map((produto) => {
-                    const vendas = produtosMaisVendidos.find((p) => p.produtoId === produto.id)
-                    return (
-                      <TableRow key={produto.id}>
                         <TableCell className="font-medium">{produto.nome}</TableCell>
                         <TableCell>{produto.categoria}</TableCell>
+                        <TableCell>{produto.quantidade}</TableCell>
                         <TableCell>
-                          <Badge
-                            variant={
-                              produto.quantidade < 10
-                                ? "destructive"
-                                : produto.quantidade < 20
-                                  ? "secondary"
-                                  : "default"
-                            }
-                          >
-                            {produto.quantidade}
-                          </Badge>
+                            <Badge variant={produto.quantidade === 0 ? "destructive" : "secondary"}>
+                            {produto.quantidade === 0 ? "Sem estoque" : "Baixo"}
+                            </Badge>
                         </TableCell>
-                        <TableCell>R$ {produto.preco.toFixed(2)}</TableCell>
-                        <TableCell>R$ {(produto.quantidade * produto.preco).toFixed(2)}</TableCell>
-                        <TableCell>{vendas?.quantidade || 0}</TableCell>
-                        <TableCell>R$ {vendas?.receita.toFixed(2) || "0.00"}</TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="movimentacao" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Movimentação de Estoque</CardTitle>
-              <CardDescription>Histórico das últimas movimentações</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Produto</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Quantidade</TableHead>
-                    <TableHead>Valor</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {movimentacaoEstoque.map((mov, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{new Date(mov.data).toLocaleDateString("pt-BR")}</TableCell>
-                      <TableCell className="font-medium">{mov.produto}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary"> {/* Ou a variante que fizer sentido para "saída" */}
-                          <TrendingDown className="mr-1 h-3 w-3" />
-                          Saída
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{mov.quantidade}</TableCell>
-                      <TableCell>R$ {mov.valor.toFixed(2)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        </TableRow>
+                    ))}
+                    </TableBody>
+                </Table>
+                ) : (
+                <p className="text-muted-foreground text-center py-8">Nenhum produto com baixo estoque.</p>
+                )}
             </CardContent>
           </Card>
         </TabsContent>

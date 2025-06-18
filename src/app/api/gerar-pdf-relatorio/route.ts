@@ -3,12 +3,12 @@ import puppeteer from 'puppeteer';
 
 export async function POST(request: NextRequest) {
   try {
-    // Agora esperamos mais informações para montar um cabeçalho rico
-    const { htmlContent, pedidoId, dataPedido, clienteNome } = await request.json();
+    // Recebe o conteúdo HTML e o período do corpo da requisição
+    const { htmlContent, periodo } = await request.json();
 
-    if (!htmlContent || !pedidoId) {
+    if (!htmlContent) {
       return NextResponse.json(
-        { error: "Conteúdo HTML ou ID do pedido ausente." },
+        { error: "Conteúdo HTML ausente." },
         { status: 400 }
       );
     }
@@ -20,13 +20,13 @@ export async function POST(request: NextRequest) {
 
     const page = await browser.newPage();
     
-    // Novo template HTML, similar ao de relatórios
+    // Template HTML que será usado para gerar o PDF, agora com um cabeçalho para o período
     const fullHtml = `
       <!DOCTYPE html>
       <html lang="pt-BR">
       <head>
         <meta charset="UTF-8">
-        <title>Pedido #${pedidoId} - Porteira de Minas</title>
+        <title>Relatório Financeiro - Porteira de Minas</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>
           body { 
@@ -34,16 +34,16 @@ export async function POST(request: NextRequest) {
             print-color-adjust: exact;
             font-family: sans-serif;
           }
-           .document-header {
+          .report-header {
             padding-bottom: 12px;
             margin-bottom: 24px;
             border-bottom: 1px solid #e5e7eb;
           }
-          .document-title {
+          .report-title {
             font-size: 24px;
             font-weight: 600;
           }
-          .document-subtitle {
+          .report-period {
             font-size: 14px;
             color: #4b5563;
           }
@@ -51,12 +51,9 @@ export async function POST(request: NextRequest) {
       </head>
       <body>
         <div class="p-8">
-          <div class="document-header">
-            <h1 class="document-title">Detalhes do Pedido #${pedidoId}</h1>
-            <p class="document-subtitle">
-              Cliente: <strong>${clienteNome || 'N/A'}</strong> | 
-              Data: <strong>${dataPedido ? new Date(dataPedido).toLocaleDateString("pt-BR") : 'N/A'}</strong>
-            </p>
+          <div class="report-header">
+            <h1 class="report-title">Relatório Financeiro</h1>
+            <p class="report-period">Período de Análise: <strong>${periodo || 'N/A'}</strong></p>
           </div>
           ${htmlContent}
         </div>
@@ -85,7 +82,7 @@ export async function POST(request: NextRequest) {
        `,
        headerTemplate: `
          <div style="font-size: 9px; width: 100%; text-align: left; padding: 0 1.5cm;">
-           Pedido #${pedidoId} - Porteira de Minas
+           Relatório Porteira de Minas - Gerado em: <span class="date"></span>
          </div>
        `,
     });
@@ -96,7 +93,7 @@ export async function POST(request: NextRequest) {
     headers.set('Content-Type', 'application/pdf');
     headers.set(
       'Content-Disposition',
-      `attachment; filename="Pedido_${pedidoId}_${new Date().toISOString().split('T')[0]}.pdf"`
+      `attachment; filename="Relatorio_Porteira_de_Minas_${new Date().toISOString().split('T')[0]}.pdf"`
     );
 
     return new Response(pdfBuffer, {
@@ -105,9 +102,13 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[API GERAR PDF PEDIDO] Erro:', error);
+    console.error('[API GERAR PDF RELATORIO] Erro:', error);
+    let errorMessage = 'Falha ao gerar o PDF.';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
     return NextResponse.json(
-      { error: 'Falha ao gerar o PDF do pedido.' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

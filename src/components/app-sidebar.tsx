@@ -34,11 +34,6 @@ const menuItems = [
     component: "vendas",
   },
   {
-    title: "Relatórios",
-    icon: BarChart3,
-    component: "relatorios",
-  },
-  {
     title: "Gestão de Perdas",
     icon: Calculator,
     component: "perdas",
@@ -47,6 +42,11 @@ const menuItems = [
     title: "Gestão de Custos",
     icon: CircleDollarSign,
     component: "custos",
+  },
+  {
+    title: "Relatórios",
+    icon: BarChart3,
+    component: "relatorios",
   }
 ]
 
