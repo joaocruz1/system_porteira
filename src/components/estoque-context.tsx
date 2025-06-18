@@ -11,7 +11,7 @@ export interface Produto {
   quantidade: number
   preco: number // Considere se este deve ser Decimal como no backend
   fornecedor: string
-  dataEntrada: string // Pode ser string (ISO) ou Date
+  data_entrada: string // Pode ser string (ISO) ou Date
   imagens: File[] // Para upload de novas imagens
   imagensExistentes: string[] // URLs de imagens existentes
   image?: string | null; // URL da imagem principal do produto vinda do backend

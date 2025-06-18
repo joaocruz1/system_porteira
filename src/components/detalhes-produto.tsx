@@ -158,7 +158,7 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Data de Entrada</p>
-              <p className="font-semibold">{new Date(produto.dataEntrada).toLocaleDateString("pt-BR")}</p>
+              <p className="font-semibold">{new Date(produto.data_entrada).toLocaleDateString("pt-BR")}</p>
             </div>
           </CardContent>
         </Card>

@@ -42,7 +42,7 @@ export function GestaoEstoque() {
     quantidade: 0,
     preco: 0,
     fornecedor: "",
-    dataEntrada: new Date().toISOString().split("T")[0],
+    data_entrada: new Date().toISOString().split("T")[0],
     imagens: [] as File[],
     imagensExistentes: [] as string[],
   })
@@ -96,7 +96,7 @@ export function GestaoEstoque() {
       quantidade: 0,
       preco: 0,
       fornecedor: "",
-      dataEntrada: new Date().toISOString().split("T")[0],
+      data_entrada: new Date().toISOString().split("T")[0],
       imagens: [],
       imagensExistentes: [],
     })
@@ -110,7 +110,7 @@ export function GestaoEstoque() {
       quantidade: produto.quantidade,
       preco: produto.preco,
       fornecedor: produto.fornecedor,
-      dataEntrada: produto.dataEntrada,
+      data_entrada: produto.data_entrada,
       imagens: [],
       imagensExistentes: produto.image ? [produto.image] : [],
     })
@@ -566,7 +566,11 @@ export function GestaoEstoque() {
                           R$ {(produto.quantidade * produto.preco).toFixed(2)}
                         </TableCell>
                         <TableCell>{produto.fornecedor}</TableCell>
-                        <TableCell>{new Date(produto.dataEntrada).toLocaleDateString("pt-BR")}</TableCell>
+                        <TableCell>
+                        {produto.data_entrada
+                          ? new Date(produto.data_entrada).toLocaleDateString("pt-BR", { timeZone: 'UTC' })
+                          : "Não informada"}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="outline" size="sm" onClick={() => setProdutoSelecionado(produto.id)}>

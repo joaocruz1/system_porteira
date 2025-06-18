@@ -39,90 +39,76 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, ShoppingCart, CheckCircle, XCircle, Clock } from "lucide-react";
-import { useEstoque, Pedido, Produto } from "@/components/estoque-context"; // Importe Pedido e Produto
+import { useEstoque, Pedido, Produto } from "@/components/estoque-context";
 import { DetalhesPedido } from "@/components/detalhes-pedido";
+import { toast } from "sonner"; // Importando toast para notificações
 
-// Interface para os itens dentro do estado novoPedido
+// Interface para os itens do pedido, alinhada com a página pública
 interface NovoPedidoProduto {
   id: string;
   name: string;
   quantity: number;
-  unitPrice: number; // Preço unitário do produto base
-  totalPrice: number; // quantidade * unitPrice (+ setupFeeItem se houver)
-  logotype?: string; // Adicionado para consistência com o que a API pode esperar por item
-  // logoText?: string; // Se precisar de texto específico por item
+  unitPrice: number; // Preço base do produto
+  setupFee: number; // Taxa de setup do produto
+  totalPrice: number; // (quantidade * unitPrice) + setupFee
+  logotype: "text" | "image";
+  logoText?: string;
+  observations?: string;
 }
-
-// Interface para o payload que será enviado para criarPedido
-// Isso ajuda a garantir que todos os campos obrigatórios de Omit<Pedido, "id"> sejam incluídos
-interface PedidoPayload extends Omit<Pedido, "id" | "produtos"> {
-  product: Array<{ // Esta é a estrutura que a API (via contexto) espera para os itens
-    Id: string;
-    nome: string;
-    quantidade: number;
-    preco: number; // Mapeado de unitPrice
-    logotype: string;
-    // logoText?: string; // Se for enviar
-  }>;
-}
-
 
 export function GestaoVendas() {
   const {
-    produtos: produtosDoEstoque, // Renomeado para evitar conflito com novoPedido.produtos
+    produtos: produtosDoEstoque,
     pedidos,
-    criarPedido,
     atualizarStatusPedido,
     darBaixaPedido,
   } = useEstoque();
 
   const [dialogAberto, setDialogAberto] = useState(false);
-  const [pedidoSelecionado, setPedidoSelecionado] = useState<string | null>(
-    null
-  );
+  const [pedidoSelecionado, setPedidoSelecionado] = useState<string | null>(null);
 
+  // Estado inicial alinhado com a estrutura da PublicQuotePage
   const initialNovoPedidoState = {
     cliente: "",
-    logo: "",
-    endereco: "",
-    cliente_telefone: "",
     cliente_email: "",
-    produtos: [] as NovoPedidoProduto[], // Usando a interface interna
+    cliente_telefone: "",
+    empresa: "", // Adicionado
+    endereco: "",
+    cep: "", // Adicionado
+    logoFile: null as File | null, // Alterado para File
+    produtos: [] as NovoPedidoProduto[],
     total: 0,
     status: "pendente" as const,
     dataPedido: new Date().toISOString().split("T")[0],
-    // logotype: "text", // Se houver um logotype geral para o pedido. Ajuste a interface Pedido no contexto se necessário.
   };
 
   const [novoPedido, setNovoPedido] = useState(initialNovoPedidoState);
   const [produtoSelecionadoId, setProdutoSelecionadoId] = useState("");
   const [quantidadeSelecionada, setQuantidadeSelecionada] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const calcularTotalItem = (
     unitPrice: number,
     quantidade: number,
-    setupFeeItem: number = 0 // Se você tiver taxa de setup por item
+    setupFee: number
   ): number => {
-    return unitPrice * quantidade + setupFeeItem;
+    return unitPrice * quantidade + setupFee;
   };
 
-  const calcularTotalPedido = (
-    produtosNoPedido: NovoPedidoProduto[]
-  ): number => {
+  const calcularTotalPedido = (produtosNoPedido: NovoPedidoProduto[]): number => {
+    // O total é a soma dos totais de cada item (que já inclui a taxa de setup)
     return produtosNoPedido.reduce((acc, p) => acc + p.totalPrice, 0);
-    // Se houver uma taxa de setup GERAL para o pedido, adicione aqui:
-    // + (novoPedido.algumaTaxaDeSetupGeral || 0);
   };
 
   const adicionarProdutoAoPedido = () => {
-    const produtoBase = produtosDoEstoque.find(p => p.id === produtoSelecionadoId);
+    const produtoBase = produtosDoEstoque.find((p) => p.id === produtoSelecionadoId);
     if (produtoBase && quantidadeSelecionada > 0) {
       if (quantidadeSelecionada > produtoBase.quantidade) {
-        alert(`Quantidade indisponível! Só há ${produtoBase.quantidade} em estoque.`);
+        toast.error(`Quantidade indisponível! Só há ${produtoBase.quantidade} em estoque.`);
         return;
       }
-      const { preco: unitPriceDoProdutoBase } = produtoBase;
-      const setupFeeParaEsteItem = 0; // Defina se houver taxa de setup por item
+      
+      const setupFeeParaEsteItem = (produtoBase as any).setupFee || 0; // Assumindo que o produto do estoque pode ter uma setupFee
 
       const produtoExistenteIndex = novoPedido.produtos.findIndex(
         (p) => p.id === produtoBase.id
@@ -136,12 +122,8 @@ export function GestaoVendas() {
             const novaQuantidade = p.quantity + quantidadeSelecionada;
             return {
               ...p,
-              quantidade: novaQuantidade, // "quantidade" é o nome correto na interface NovoPedidoProduto
-              totalPrice: calcularTotalItem(
-                p.unitPrice,
-                novaQuantidade,
-                (p as any).setupFeeItem || setupFeeParaEsteItem // Mantém setup fee do item se existir
-              ),
+              quantity: novaQuantidade,
+              totalPrice: calcularTotalItem(p.unitPrice, novaQuantidade, p.setupFee),
             };
           }
           return p;
@@ -151,14 +133,14 @@ export function GestaoVendas() {
           id: produtoBase.id,
           name: produtoBase.nome,
           quantity: quantidadeSelecionada,
-          unitPrice: unitPriceDoProdutoBase,
+          unitPrice: produtoBase.preco,
+          setupFee: setupFeeParaEsteItem,
           totalPrice: calcularTotalItem(
-            unitPriceDoProdutoBase,
+            produtoBase.preco,
             quantidadeSelecionada,
             setupFeeParaEsteItem
           ),
-          logotype: "text", // Defina um padrão ou pegue de algum lugar
-          // setupFeeItem: setupFeeParaEsteItem, // Se rastrear por item
+          logotype: "text", // Padrão, já que não há UI para isso no admin
         };
         produtosAtualizados = [...novoPedido.produtos, novoItem];
       }
@@ -175,9 +157,7 @@ export function GestaoVendas() {
   };
 
   const removerProdutoDoPedido = (produtoId: string) => {
-    const produtosFiltrados = novoPedido.produtos.filter(
-      (p) => p.id !== produtoId
-    );
+    const produtosFiltrados = novoPedido.produtos.filter((p) => p.id !== produtoId);
     setNovoPedido((prev) => ({
       ...prev,
       produtos: produtosFiltrados,
@@ -185,54 +165,102 @@ export function GestaoVendas() {
     }));
   };
 
- const handleSubmit = (e: React.FormEvent) => {
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNovoPedido({ ...novoPedido, logoFile: e.target.files?.[0] || null });
+  };
+
+  // --- FUNÇÃO DE SUBMISSÃO ATUALIZADA ---
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (novoPedido.cliente && novoPedido.produtos.length > 0) {
-      // Mapear os produtos do estado novoPedido (NovoPedidoProduto)
-      // para a estrutura esperada pela interface Pedido['produtos'] do contexto
-      const produtosParaAPIContexto = novoPedido.produtos.map((item) => ({
-        produtoId: item.id,
-        nome: item.name,
-        quantidade: item.quantity,
-        preco: item.unitPrice, // Mapeando unitPrice para preco
-        logotype: item.logotype || "text", // Pega o logotype do item ou usa padrão
-        // logoText: item.logoText || "", // Se você tiver logoText no NovoPedidoProduto
-      }));
+    if (!novoPedido.cliente || !novoPedido.cliente_email || !novoPedido.cliente_telefone || !novoPedido.cep || novoPedido.produtos.length === 0) {
+      toast.error("Preencha todos os dados do cliente e adicione produtos ao pedido.");
+      return;
+    }
 
-      // Este é o objeto que será enviado para criarPedido,
-      // que por sua vez construirá o FormData
-      const pedidoParaContexto: Omit<Pedido, "id"> = {
-        cliente: novoPedido.cliente,
-        logo: novoPedido.logo, // URL da imagem principal do pedido
-        endereco: novoPedido.endereco,
-        cliente_telefone: novoPedido.cliente_telefone,
-        cliente_email: novoPedido.cliente_email,
-        produtos: produtosParaAPIContexto, // Array de produtos formatado
-        total: novoPedido.total, // Total geral já calculado
-        status: novoPedido.status,
-        dataPedido: novoPedido.dataPedido,
-        // logotype: novoPedido.logotype, // Se a interface Pedido no contexto tiver logotype no nível raiz
-      };
+    setIsSubmitting(true);
 
-      criarPedido(pedidoParaContexto);
+    const formData = new FormData();
+
+    // 1. Montar o objeto customerData
+    const customerData = {
+      name: novoPedido.cliente,
+      email: novoPedido.cliente_email,
+      phone: novoPedido.cliente_telefone,
+      company: novoPedido.empresa,
+      address: novoPedido.endereco,
+      cep: novoPedido.cep,
+    };
+    formData.append('customerData', JSON.stringify(customerData));
+
+    // 2. Montar o array quoteItems (no formato da página pública)
+    const processedQuoteItems = novoPedido.produtos.map(item => ({
+      // Simula a estrutura do 'product' da página pública
+      product: {
+        id: item.id,
+        name: item.name,
+        basePrice: item.unitPrice,
+        setupFee: item.setupFee,
+      },
+      quantity: item.quantity,
+      logoType: item.logotype,
+      logoText: item.logoText || `Gravação em ${item.name}`, // Texto padrão
+      observations: item.observations || "",
+      unitPrice: item.unitPrice,
+      setupFee: item.setupFee,
+      totalPrice: item.totalPrice,
+    }));
+    formData.append('quoteItems', JSON.stringify(processedQuoteItems));
+
+    // 3. Adicionar o arquivo da logo, se houver
+    if (novoPedido.logoFile) {
+      formData.append('logoFile', novoPedido.logoFile);
+    }
+
+    try {
+      // 4. Enviar a requisição para a mesma API da página pública
+      const response = await fetch("/api/pedido", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorResult = await response.json();
+        throw new Error(errorResult.error || "Erro ao criar pedido.");
+      }
+
+      toast.success("Pedido criado com sucesso!");
+      
+      // 5. Resetar o formulário e fechar o dialog
       setDialogAberto(false);
       setNovoPedido(initialNovoPedidoState);
+    } catch (error) {
+      console.error("Falha ao criar o pedido:", error);
+      toast.error((error as Error).message || "Não foi possível criar o pedido. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case "concluido":
-        return "default" as const;
-      case "cancelado":
-        return "destructive" as const;
-      case "processando":
-        return "secondary" as const;
-      default:
-        return "outline" as const;
+      case "concluido": return "default" as const;
+      case "cancelado": return "destructive" as const;
+      case "processando": return "secondary" as const;
+      default: return "outline" as const;
     }
   };
+
+  function getStatusIcon(status: string): React.ReactNode {
+    const iconProps = { className: "h-4 w-4" };
+    switch (status) {
+      case "concluido": return <CheckCircle {...iconProps} />;
+      case "cancelado": return <XCircle {...iconProps} />;
+      case "processando": return <Clock {...iconProps} />;
+      case "pendente": return <Clock {...iconProps} />;
+      default: return null;
+    }
+  }
 
   if (pedidoSelecionado) {
     return (
@@ -243,33 +271,12 @@ export function GestaoVendas() {
     );
   }
 
-  // --- FUNÇÃO CORRIGIDA ---
-  function getStatusIcon(status: string): React.ReactNode {
-    const iconProps = { className: "h-4 w-4" };
-    switch (status) {
-      case "concluido":
-        return <CheckCircle {...iconProps} />;
-      case "cancelado":
-        return <XCircle {...iconProps} />;
-      case "processando":
-        return <Clock {...iconProps} />;
-      case "pendente":
-        return <Clock {...iconProps} />; // Usando o mesmo ícone para pendente
-      default:
-        return null; // Não retorna ícone para status desconhecido
-    }
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            Vendas e Pedidos
-          </h2>
-          <p className="text-muted-foreground">
-            Gerencie pedidos e controle as vendas
-          </p>
+          <h2 className="text-2xl font-bold tracking-tight">Vendas e Pedidos</h2>
+          <p className="text-muted-foreground">Gerencie pedidos e controle as vendas</p>
         </div>
 
         <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
@@ -282,124 +289,57 @@ export function GestaoVendas() {
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Criar Novo Pedido</DialogTitle>
-              <DialogDescription>
-                Adicione produtos ao pedido e finalize a venda.
-              </DialogDescription>
+              <DialogDescription>Adicione produtos ao pedido e finalize a venda.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
+                {/* --- CAMPOS DO CLIENTE ATUALIZADOS --- */}
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="cliente" className="text-right">
-                    Cliente
-                  </Label>
-                  <Input
-                    id="cliente"
-                    value={novoPedido.cliente}
-                    onChange={(e) =>
-                      setNovoPedido({ ...novoPedido, cliente: e.target.value })
-                    }
-                    className="col-span-3"
-                    placeholder="Nome do cliente"
-                    required
-                  />
+                  <Label htmlFor="cliente" className="text-right">Cliente</Label>
+                  <Input id="cliente" value={novoPedido.cliente} onChange={(e) => setNovoPedido({ ...novoPedido, cliente: e.target.value })} className="col-span-3" placeholder="Nome do cliente" required />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="endereco" className="text-right">
-                    Endereço
-                  </Label>
-                  <Input
-                    id="endereco"
-                    value={novoPedido.endereco}
-                    onChange={(e) =>
-                      setNovoPedido({ ...novoPedido, endereco: e.target.value })
-                    }
-                    className="col-span-3"
-                    placeholder="Endereço do cliente"
-                    required
-                  />
+                  <Label htmlFor="cliente_email" className="text-right">Email</Label>
+                  <Input id="cliente_email" type="email" value={novoPedido.cliente_email} onChange={(e) => setNovoPedido({ ...novoPedido, cliente_email: e.target.value })} className="col-span-3" placeholder="email@example.com" required />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="cliente_telefone" className="text-right">
-                    Telefone
-                  </Label>
-                  <Input
-                    id="cliente_telefone"
-                    value={novoPedido.cliente_telefone}
-                    onChange={(e) =>
-                      setNovoPedido({ ...novoPedido, cliente_telefone: e.target.value })
-                    }
-                    className="col-span-3"
-                    placeholder="(XX) XXXXX-XXXX"
-                    required
-                  />
+                  <Label htmlFor="cliente_telefone" className="text-right">Telefone</Label>
+                  <Input id="cliente_telefone" value={novoPedido.cliente_telefone} onChange={(e) => setNovoPedido({ ...novoPedido, cliente_telefone: e.target.value })} className="col-span-3" placeholder="(XX) XXXXX-XXXX" required />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="cliente_email" className="text-right">
-                    Email Cliente
-                  </Label>
-                  <Input
-                    id="cliente_email"
-                    type="email"
-                    value={novoPedido.cliente_email}
-                    onChange={(e) =>
-                      setNovoPedido({
-                        ...novoPedido,
-                        cliente_email: e.target.value,
-                      })
-                    }
-                    className="col-span-3"
-                    placeholder="email@example.com"
-                    required
-                  />
+                  <Label htmlFor="empresa" className="text-right">Empresa</Label>
+                  <Input id="empresa" value={novoPedido.empresa} onChange={(e) => setNovoPedido({ ...novoPedido, empresa: e.target.value })} className="col-span-3" placeholder="Nome da empresa (opcional)" />
                 </div>
-                {/* Campo para URL do Logo (opcional) */}
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="logoUrl" className="text-right">
-                    URL da Logo
-                  </Label>
-                  <Input
-                    id="logoUrl"
-                    value={novoPedido.logo}
-                    onChange={(e) =>
-                      setNovoPedido({ ...novoPedido, logo: e.target.value })
-                    }
-                    className="col-span-3"
-                    placeholder="https://exemplo.com/logo.png (opcional)"
-                  />
+                  <Label htmlFor="cep" className="text-right">CEP</Label>
+                  <Input id="cep" value={novoPedido.cep} onChange={(e) => setNovoPedido({ ...novoPedido, cep: e.target.value })} className="col-span-3" placeholder="00000-000" required />
                 </div>
-
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="endereco" className="text-right">Endereço</Label>
+                  <Input id="endereco" value={novoPedido.endereco} onChange={(e) => setNovoPedido({ ...novoPedido, endereco: e.target.value })} className="col-span-3" placeholder="Endereço completo" required />
+                </div>
+                {/* --- CAMPO DE UPLOAD DE LOGO ATUALIZADO --- */}
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="logoFile" className="text-right">Logo</Label>
+                  <Input id="logoFile" type="file" onChange={handleLogoChange} className="col-span-3" />
+                </div>
 
                 <div className="border rounded-lg p-4">
                   <h4 className="font-medium mb-3">Adicionar Produtos</h4>
                   <div className="flex gap-2 mb-3">
-                    <Select
-                      value={produtoSelecionadoId}
-                      onValueChange={setProdutoSelecionadoId}
-                    >
+                    <Select value={produtoSelecionadoId} onValueChange={setProdutoSelecionadoId}>
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Selecione um produto" />
                       </SelectTrigger>
                       <SelectContent>
                         {produtosDoEstoque.map((produto) => (
                           <SelectItem key={produto.id} value={produto.id}>
-                            {produto.nome} - R${" "}
-                            {produto.preco.toFixed(2)} ({produto.quantidade}{" "}
-                            disponível)
+                            {produto.nome} - R$ {produto.preco.toFixed(2)} ({produto.quantidade} disp.)
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={quantidadeSelecionada}
-                      onChange={(e) =>
-                        setQuantidadeSelecionada(
-                          Number.parseInt(e.target.value) || 1
-                        )
-                      }
-                      className="w-20"
-                    />
+                    <Input type="number" min="1" value={quantidadeSelecionada} onChange={(e) => setQuantidadeSelecionada(Number.parseInt(e.target.value) || 1)} className="w-20" />
                     <Button type="button" onClick={adicionarProdutoAoPedido}>
                       Adicionar
                     </Button>
@@ -408,27 +348,17 @@ export function GestaoVendas() {
                   {novoPedido.produtos.length > 0 && (
                     <div className="space-y-2">
                       <h5 className="font-medium">Produtos no Pedido:</h5>
-                      {novoPedido.produtos.map((produto, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between bg-muted p-2 rounded"
-                        >
+                      {novoPedido.produtos.map((produto) => (
+                        <div key={produto.id} className="flex items-center justify-between bg-muted p-2 rounded">
                           <div>
                             <p>{produto.name} x {produto.quantity}</p>
                             <p className="text-xs text-muted-foreground">
-                              Unit: R$ {produto.unitPrice.toFixed(2)}
+                              Unit: R$ {produto.unitPrice.toFixed(2)} + Setup: R$ {produto.setupFee.toFixed(2)}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <span>R$ {produto.totalPrice.toFixed(2)}</span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                removerProdutoDoPedido(produto.id)
-                              }
-                            >
+                            <Button type="button" variant="outline" size="sm" onClick={() => removerProdutoDoPedido(produto.id)}>
                               Remover
                             </Button>
                           </div>
@@ -442,11 +372,8 @@ export function GestaoVendas() {
                 </div>
               </div>
               <DialogFooter>
-                <Button
-                  type="submit"
-                  disabled={novoPedido.produtos.length === 0}
-                >
-                  Criar Pedido
+                <Button type="submit" disabled={isSubmitting || novoPedido.produtos.length === 0}>
+                  {isSubmitting ? "Criando..." : "Criar Pedido"}
                 </Button>
               </DialogFooter>
             </form>
@@ -492,53 +419,28 @@ export function GestaoVendas() {
                   </TableCell>
                   <TableCell>R$ {pedido.total.toFixed(2)}</TableCell>
                   <TableCell>
-                    <Badge
-                      variant={getStatusVariant(pedido.status)}
-                      className="flex items-center gap-1 w-fit"
-                    >
+                    <Badge variant={getStatusVariant(pedido.status)} className="flex items-center gap-1 w-fit">
                       {getStatusIcon(pedido.status)}
                       {pedido.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPedidoSelecionado(pedido.id)}
-                      >
+                      <Button variant="outline" size="sm" onClick={() => setPedidoSelecionado(pedido.id)}>
                         Ver Detalhes
                       </Button>
                       {pedido.status === "pendente" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            atualizarStatusPedido(pedido.id, "processando")
-                          }
-                        >
+                        <Button variant="outline" size="sm" onClick={() => atualizarStatusPedido(pedido.id, "processando")}>
                           Processar
                         </Button>
                       )}
-                      {(pedido.status === "pendente" ||
-                        pedido.status === "processando") && (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => darBaixaPedido(pedido.id)}
-                          >
-                            Dar Baixa
-                          </Button>
-                        )}
-                      {pedido.status !== "cancelado" &&
-                        pedido.status !== "concluido" && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() =>
-                              atualizarStatusPedido(pedido.id, "cancelado")
-                            }
-                          >
+                      {(pedido.status === "pendente" || pedido.status === "processando") && (
+                        <Button variant="default" size="sm" onClick={() => darBaixaPedido(pedido.id)}>
+                          Dar Baixa
+                        </Button>
+                      )}
+                      {pedido.status !== "cancelado" && pedido.status !== "concluido" && (
+                          <Button variant="destructive" size="sm" onClick={() => atualizarStatusPedido(pedido.id, "cancelado")}>
                             Cancelar
                           </Button>
                         )}
