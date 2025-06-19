@@ -14,9 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { ArrowLeft, Package, DollarSign, Edit, Camera, History, TrendingUp } from "lucide-react"
-import { useEstoque, type Produto } from "@/components/estoque-context"
-import { ImageGallery } from "@/components/image-gallery"
+import { ArrowLeft, Package, DollarSign, Edit, History, TrendingUp, Palette, Plus, Trash2 } from "lucide-react"
+import { useEstoque, type ProductVariation } from "@/components/estoque-context"
 import { useState } from "react"
 
 interface DetalhesProdutoProps {
@@ -25,11 +24,16 @@ interface DetalhesProdutoProps {
 }
 
 export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
-  const { produtos, pedidos, atualizarQuantidade, removerProduto } = useEstoque()
-  const [editandoQuantidade, setEditandoQuantidade] = useState(false)
+  const { produtos, pedidos, atualizarQuantidadeVariacao, removerProduto, adicionarVariacao, removerVariacao } =
+    useEstoque()
+  const [editandoVariacao, setEditandoVariacao] = useState<string | null>(null)
   const [novaQuantidade, setNovaQuantidade] = useState(0)
-  const [dialogEdicaoAberto, setDialogEdicaoAberto] = useState(false)
-  const [produtoEditado, setProdutoEditado] = useState<Partial<Produto>>({})
+  const [dialogNovaVariacao, setDialogNovaVariacao] = useState(false)
+  const [novaVariacao, setNovaVariacao] = useState({
+    color: "",
+    quantity: 0,
+    image: undefined as File | undefined,
+  })
 
   const produto = produtos.find((p) => p.id === produtoId)
 
@@ -57,8 +61,11 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
 
   const receitaTotal = pedidosComProduto.reduce((acc, pedido) => {
     const produtoNoPedido = pedido.produtos.find((p) => p.produtoId === produto.id)
-    return acc + (produtoNoPedido?.quantidade || 0) * (produtoNoPedido?.preco || produto.preco)
+    return acc + (produtoNoPedido?.quantidade || 0) * (produtoNoPedido?.preco || produto.basePrice)
   }, 0)
+
+  const totalQuantity = produto.variations.reduce((total, variation) => total + variation.quantity, 0)
+  const totalValue = totalQuantity * produto.basePrice
 
   const getStatusEstoque = (quantidade: number) => {
     if (quantidade === 0) return { label: "Sem estoque", variant: "destructive" as const, color: "text-red-600" }
@@ -68,28 +75,24 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
     return { label: "Alto", variant: "default" as const, color: "text-green-600" }
   }
 
-  const status = getStatusEstoque(produto.quantidade)
+  const status = getStatusEstoque(totalQuantity)
 
-  const handleAtualizarQuantidade = () => {
+  const handleAtualizarQuantidadeVariacao = (variationId: string) => {
     if (novaQuantidade >= 0) {
-      atualizarQuantidade(produto.id, novaQuantidade)
-      setEditandoQuantidade(false)
+      atualizarQuantidadeVariacao(variationId, novaQuantidade)
+      setEditandoVariacao(null)
     }
   }
 
-  const iniciarEdicaoQuantidade = () => {
-    setNovaQuantidade(produto.quantidade)
-    setEditandoQuantidade(true)
+  const iniciarEdicaoQuantidade = (variation: ProductVariation) => {
+    setNovaQuantidade(variation.quantity)
+    setEditandoVariacao(variation.id)
   }
 
-  const abrirDialogoEdicao = () => {
-    setProdutoEditado({
-      nome: produto.nome,
-      categoria: produto.categoria,
-      preco: produto.preco,
-      fornecedor: produto.fornecedor,
-    })
-    setDialogEdicaoAberto(true)
+  const handleAdicionarVariacao = () => {
+    adicionarVariacao(produto.id, novaVariacao)
+    setDialogNovaVariacao(false)
+    setNovaVariacao({ color: "", quantity: 0, image: undefined })
   }
 
   return (
@@ -102,40 +105,20 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
             Voltar
           </Button>
           <div>
-            <h2 className="text-2xl font-bold">{produto.nome}</h2>
-            <p className="text-muted-foreground">Detalhes completos do produto</p>
+            <h2 className="text-2xl font-bold">{produto.name}</h2>
+            <p className="text-muted-foreground">Detalhes completos do produto com variações</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant={status.variant} className="text-sm px-3 py-1">
             {status.label}
           </Badge>
-          <Button variant="outline" onClick={abrirDialogoEdicao}>
-            <Edit className="mr-2 h-4 w-4" />
-            Editar
+          <Button variant="outline" onClick={() => setDialogNovaVariacao(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Variação
           </Button>
         </div>
       </div>
-
-      {/* Galeria de Imagens */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Camera className="h-5 w-5" />
-            Imagens do Produto
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ImageGallery images={produto.image ? [produto.image] : []} productName={produto.nome} editable={false} />
-          {(!produto.image || produto.image.length === 0) && (
-            <div className="text-center py-8 border-2 border-dashed rounded-lg">
-              <Camera className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-2 text-sm font-semibold">Nenhuma imagem</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Este produto ainda não possui imagens cadastradas.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Cards de Informações Principais */}
       <div className="grid gap-6 md:grid-cols-4">
@@ -150,53 +133,41 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
           <CardContent className="space-y-4">
             <div>
               <p className="text-sm text-muted-foreground">Categoria</p>
-              <Badge variant="outline">{produto.categoria}</Badge>
+              <Badge variant="outline">{produto.category}</Badge>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Fornecedor</p>
-              <p className="font-semibold">{produto.fornecedor}</p>
+              <p className="font-semibold">{produto.provider}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Data de Entrada</p>
-              <p className="font-semibold">{new Date(produto.data_entrada).toLocaleDateString("pt-BR")}</p>
+              <p className="text-sm text-muted-foreground">Data de Criação</p>
+              <p className="font-semibold">{new Date(produto.createdAt).toLocaleDateString("pt-BR")}</p>
             </div>
+            {produto.description && (
+              <div>
+                <p className="text-sm text-muted-foreground">Descrição</p>
+                <p className="font-semibold">{produto.description}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Estoque */}
+        {/* Estoque Total */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              Estoque
+              Estoque Total
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <p className="text-sm text-muted-foreground">Quantidade Atual</p>
-              {editandoQuantidade ? (
-                <div className="flex gap-2 mt-2">
-                  <Input
-                    type="number"
-                    value={novaQuantidade}
-                    onChange={(e) => setNovaQuantidade(Number(e.target.value))}
-                    className="w-20"
-                  />
-                  <Button size="sm" onClick={handleAtualizarQuantidade}>
-                    ✓
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setEditandoQuantidade(false)}>
-                    ✕
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <p className={`text-2xl font-bold ${status.color}`}>{produto.quantidade}</p>
-                  <Button size="sm" variant="outline" onClick={iniciarEdicaoQuantidade}>
-                    <Edit className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
+              <p className="text-sm text-muted-foreground">Quantidade Total</p>
+              <p className={`text-2xl font-bold ${status.color}`}>{totalQuantity}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Variações</p>
+              <p className="font-semibold">{produto.variations.length} cores</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Status</p>
@@ -215,12 +186,12 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <p className="text-sm text-muted-foreground">Preço Unitário</p>
-              <p className="text-2xl font-bold text-green-600">R$ {produto.preco.toFixed(2)}</p>
+              <p className="text-sm text-muted-foreground">Preço Base</p>
+              <p className="text-2xl font-bold text-green-600">R$ {produto.basePrice.toFixed(2)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Valor Total em Estoque</p>
-              <p className="font-semibold">R$ {(produto.quantidade * produto.preco).toFixed(2)}</p>
+              <p className="font-semibold">R$ {totalValue.toFixed(2)}</p>
             </div>
           </CardContent>
         </Card>
@@ -250,6 +221,91 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
         </Card>
       </div>
 
+      {/* Variações do Produto */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-5 w-5" />
+            Variações de Cores ({produto.variations.length})
+          </CardTitle>
+          <CardDescription>Gerencie o estoque de cada cor individualmente</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {produto.variations.map((variation) => {
+              const variationStatus = getStatusEstoque(variation.quantity)
+              return (
+                <Card key={variation.id} className="p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-6 h-6 rounded-full border-2"
+                          style={{ backgroundColor: variation.color.toLowerCase() }}
+                          title={variation.color}
+                        />
+                        <span className="font-medium">{variation.color}</span>
+                      </div>
+                      <Badge variant={variationStatus.variant} className="text-xs">
+                        {variationStatus.label}
+                      </Badge>
+                    </div>
+
+                    {variation.image && (
+                      <div className="w-full h-32 bg-gray-100 rounded overflow-hidden">
+                        <img
+                          src={variation.image || "/placeholder.svg"}
+                          alt={`${produto.name} - ${variation.color}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Quantidade</span>
+                        {variation.sku && (
+                          <span className="text-xs text-muted-foreground font-mono">SKU: {variation.sku}</span>
+                        )}
+                      </div>
+
+                      {editandoVariacao === variation.id ? (
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            value={novaQuantidade}
+                            onChange={(e) => setNovaQuantidade(Number(e.target.value))}
+                            className="flex-1"
+                          />
+                          <Button size="sm" onClick={() => handleAtualizarQuantidadeVariacao(variation.id)}>
+                            ✓
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setEditandoVariacao(null)}>
+                            ✕
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xl font-bold ${variationStatus.color}`}>{variation.quantity}</span>
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="outline" onClick={() => iniciarEdicaoQuantidade(variation)}>
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => removerVariacao(variation.id)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Histórico de Pedidos */}
       {pedidosComProduto.length > 0 && (
         <Card>
@@ -267,6 +323,7 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
                   <TableHead>Pedido</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Data</TableHead>
+                  <TableHead>Cor</TableHead>
                   <TableHead>Quantidade</TableHead>
                   <TableHead>Preço Unit.</TableHead>
                   <TableHead>Status</TableHead>
@@ -283,6 +340,19 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
                       <TableCell className="font-mono">#{pedido.id}</TableCell>
                       <TableCell>{pedido.cliente}</TableCell>
                       <TableCell>{new Date(pedido.dataPedido).toLocaleDateString("pt-BR")}</TableCell>
+                      <TableCell>
+                        {produtoNoPedido.cor ? (
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-4 h-4 rounded-full border"
+                              style={{ backgroundColor: produtoNoPedido.cor.toLowerCase() }}
+                            />
+                            {produtoNoPedido.cor}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">N/A</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="font-mono">
                           {produtoNoPedido.quantidade}x
@@ -324,13 +394,9 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
         </CardHeader>
         <CardContent>
           <div className="flex gap-4">
-            <Button onClick={iniciarEdicaoQuantidade}>
-              <Edit className="mr-2 h-4 w-4" />
-              Ajustar Estoque
-            </Button>
-            <Button variant="outline" onClick={abrirDialogoEdicao}>
-              <Edit className="mr-2 h-4 w-4" />
-              Editar Produto
+            <Button onClick={() => setDialogNovaVariacao(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Adicionar Variação
             </Button>
             <Button variant="destructive" onClick={() => removerProduto(produto.id)}>
               <Package className="mr-2 h-4 w-4" />
@@ -338,17 +404,17 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
             </Button>
           </div>
 
-          {produto.quantidade < 20 && (
+          {totalQuantity < 20 && (
             <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Atenção: Estoque Baixo</h4>
               <p className="text-sm text-yellow-700">
                 Este produto está com estoque baixo. Considere fazer uma reposição junto ao fornecedor{" "}
-                <strong>{produto.fornecedor}</strong>.
+                <strong>{produto.provider}</strong>.
               </p>
             </div>
           )}
 
-          {produto.quantidade === 0 && (
+          {totalQuantity === 0 && (
             <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
               <h4 className="font-semibold text-red-800 mb-2">🚨 Produto Sem Estoque</h4>
               <p className="text-sm text-red-700">
@@ -359,65 +425,46 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
         </CardContent>
       </Card>
 
-      {/* Dialog de Edição */}
-      <Dialog open={dialogEdicaoAberto} onOpenChange={setDialogEdicaoAberto}>
-        <DialogContent className="sm:max-w-[500px]">
+      {/* Dialog para Nova Variação */}
+      <Dialog open={dialogNovaVariacao} onOpenChange={setDialogNovaVariacao}>
+        <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>Editar Produto</DialogTitle>
-            <DialogDescription>Atualize as informações básicas do produto.</DialogDescription>
+            <DialogTitle>Adicionar Nova Variação</DialogTitle>
+            <DialogDescription>Adicione uma nova cor para {produto.name}.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="nome" className="text-right">
-                Nome
-              </Label>
+            <div>
+              <Label htmlFor="nova-cor">Cor</Label>
               <Input
-                id="nome"
-                value={produtoEditado.nome || ""}
-                onChange={(e) => setProdutoEditado({ ...produtoEditado, nome: e.target.value })}
-                className="col-span-3"
+                id="nova-cor"
+                value={novaVariacao.color}
+                onChange={(e) => setNovaVariacao({ ...novaVariacao, color: e.target.value })}
+                placeholder="Ex: Verde, Amarelo"
+                required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="categoria" className="text-right">
-                Categoria
-              </Label>
+            <div>
+              <Label htmlFor="nova-quantidade">Quantidade</Label>
               <Input
-                id="categoria"
-                value={produtoEditado.categoria || ""}
-                onChange={(e) => setProdutoEditado({ ...produtoEditado, categoria: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="preco" className="text-right">
-                Preço
-              </Label>
-              <Input
-                id="preco"
+                id="nova-quantidade"
                 type="number"
-                step="0.01"
-                value={produtoEditado.preco || ""}
-                onChange={(e) => setProdutoEditado({ ...produtoEditado, preco: Number.parseFloat(e.target.value) })}
-                className="col-span-3"
+                value={novaVariacao.quantity}
+                onChange={(e) => setNovaVariacao({ ...novaVariacao, quantity: Number.parseInt(e.target.value) || 0 })}
+                required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="fornecedor" className="text-right">
-                Fornecedor
-              </Label>
+            <div>
+              <Label htmlFor="nova-imagem">Imagem (opcional)</Label>
               <Input
-                id="fornecedor"
-                value={produtoEditado.fornecedor || ""}
-                onChange={(e) => setProdutoEditado({ ...produtoEditado, fornecedor: e.target.value })}
-                className="col-span-3"
+                id="nova-imagem"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setNovaVariacao({ ...novaVariacao, image: e.target.files?.[0] })}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" onClick={() => setDialogEdicaoAberto(false)}>
-              Salvar Alterações
-            </Button>
+            <Button onClick={handleAdicionarVariacao}>Adicionar Variação</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

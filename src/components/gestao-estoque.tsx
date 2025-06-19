@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -20,47 +19,64 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Pencil, Trash2, Package, Search, AlertTriangle } from "lucide-react"
+import { Plus, Pencil, Trash2, Package, Search, AlertTriangle, Palette } from "lucide-react"
 import { useEstoque, type Produto } from "@/components/estoque-context"
 import { useAuth } from "@/components/auth-context"
-import { ImageGallery } from "@/components/image-gallery"
 import { DetalhesProduto } from "@/components/detalhes-produto"
 
 export function GestaoEstoque() {
   const { permissions } = useAuth()
-  const { produtos, adicionarProduto, removerProduto, atualizarQuantidade, atualizarProdutoExistente } = useEstoque()
+  const {
+    produtos,
+    adicionarProduto,
+    removerProduto,
+    atualizarQuantidadeVariacao,
+    adicionarVariacao,
+    removerVariacao,
+  } = useEstoque()
   const [dialogAberto, setDialogAberto] = useState(false)
-  const [produtoEditando, setProdutoEditando] = useState<Produto | null>(null)
-  const [tipoAdicao, setTipoAdicao] = useState<"novo" | "existente">("novo")
-  const [produtoExistenteSelecionado, setProdutoExistenteSelecionado] = useState("")
-  const [quantidadeAdicionar, setQuantidadeAdicionar] = useState(0)
+  const [dialogVariacaoAberto, setDialogVariacaoAberto] = useState(false)
+  const [produtoSelecionadoVariacao, setProdutoSelecionadoVariacao] = useState<string | null>(null)
   const [filtroCategoria, setFiltroCategoria] = useState("todas")
   const [busca, setBusca] = useState("")
   const [novoProduto, setNovoProduto] = useState({
-    nome: "",
-    categoria: "",
-    quantidade: 0,
-    preco: 0,
-    fornecedor: "",
-    data_entrada: new Date().toISOString().split("T")[0],
-    imagens: [] as File[],
-    imagensExistentes: [] as string[],
+    name: "",
+    description: "",
+    category: "",
+    basePrice: 0,
+    provider: "",
+    variations: [{ color: "", quantity: 0, image: undefined as File | undefined }],
+  })
+  const [novaVariacao, setNovaVariacao] = useState({
+    color: "",
+    quantity: 0,
+    image: undefined as File | undefined,
   })
 
-  const [imagemPreview, setImagemPreview] = useState<string | null>(null)
-  const [previewOpen, setPreviewOpen] = useState(false)
   const [produtoSelecionado, setProdutoSelecionado] = useState<string | null>(null)
 
+    // Calcular totais considerando todas as variações
+  const getTotalQuantity = (produto: Produto) => {
+    if (!produto || !Array.isArray(produto.variations)) {
+      return 0
+    }
+    return produto.variations.reduce((total, variation) => total + (variation.quantity || 0), 0)
+  }
+
+  const getTotalValue = (produto: Produto) => {
+    return getTotalQuantity(produto) * produto.basePrice
+  }
+
   const produtosFiltrados = produtos.filter((produto) => {
-    const matchCategoria = filtroCategoria === "todas" || produto.categoria === filtroCategoria
+    const matchCategoria = filtroCategoria === "todas" || produto.category === filtroCategoria
     const matchBusca =
-      produto.nome.toLowerCase().includes(busca.toLowerCase()) ||
-      produto.fornecedor.toLowerCase().includes(busca.toLowerCase())
+      (produto.name?.toLowerCase().includes(busca.toLowerCase()) ||
+      produto.provider?.toLowerCase().includes(busca.toLowerCase())) ?? false
     return matchCategoria && matchBusca
   })
 
-  const produtosBaixoEstoque = produtos.filter((p) => p.quantidade < 20)
-  const produtosSemEstoque = produtos.filter((p) => p.quantidade === 0)
+  const produtosBaixoEstoque = produtos.filter((p) => getTotalQuantity(p) < 20)
+  const produtosSemEstoque = produtos.filter((p) => getTotalQuantity(p) === 0)
 
   if (!permissions.canManageStock) {
     return (
@@ -73,48 +89,30 @@ export function GestaoEstoque() {
     )
   }
 
-  const categorias = ["todas", ...Array.from(new Set(produtos.map((p) => p.categoria)))]
+  const categorias = ["todas", ...Array.from(new Set(produtos.map((p) => p.category)))]
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (produtoEditando) {
-      atualizarQuantidade(produtoEditando.id, novoProduto.quantidade)
-    } else if (tipoAdicao === "novo") {
-      adicionarProduto(novoProduto)
-    } else if (tipoAdicao === "existente" && produtoExistenteSelecionado && quantidadeAdicionar > 0) {
-      atualizarProdutoExistente(produtoExistenteSelecionado, quantidadeAdicionar)
-    }
-
+    adicionarProduto(novoProduto)
     setDialogAberto(false)
-    setProdutoEditando(null)
-    setTipoAdicao("novo")
-    setProdutoExistenteSelecionado("")
-    setQuantidadeAdicionar(0)
     setNovoProduto({
-      nome: "",
-      categoria: "",
-      quantidade: 0,
-      preco: 0,
-      fornecedor: "",
-      data_entrada: new Date().toISOString().split("T")[0],
-      imagens: [],
-      imagensExistentes: [],
+      name: "",
+      description: "",
+      category: "",
+      basePrice: 0,
+      provider: "",
+      variations: [{ color: "", quantity: 0, image: undefined }],
     })
   }
 
-  const abrirEdicao = (produto: Produto) => {
-    setProdutoEditando(produto)
-    setNovoProduto({
-      nome: produto.nome,
-      categoria: produto.categoria,
-      quantidade: produto.quantidade,
-      preco: produto.preco,
-      fornecedor: produto.fornecedor,
-      data_entrada: produto.data_entrada,
-      imagens: [],
-      imagensExistentes: produto.image ? [produto.image] : [],
-    })
-    setDialogAberto(true)
+  const handleSubmitVariacao = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (produtoSelecionadoVariacao) {
+      adicionarVariacao(produtoSelecionadoVariacao, novaVariacao)
+      setDialogVariacaoAberto(false)
+      setNovaVariacao({ color: "", quantity: 0, image: undefined })
+      setProdutoSelecionadoVariacao(null)
+    }
   }
 
   const getStatusEstoque = (quantidade: number) => {
@@ -125,69 +123,25 @@ export function GestaoEstoque() {
     return { label: "Alto", variant: "default" as const }
   }
 
-  const abrirDialogoAdicao = () => {
-    setProdutoEditando(null)
-    setTipoAdicao("novo")
-    setProdutoExistenteSelecionado("")
-    setQuantidadeAdicionar(0)
-    setDialogAberto(true)
-  }
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
+  const adicionarNovaVariacao = () => {
     setNovoProduto((prev) => ({
       ...prev,
-      imagens: [...prev.imagens, ...files].slice(0, 5), // Máximo 5 imagens
+      variations: [...prev.variations, { color: "", quantity: 0, image: undefined }],
     }))
   }
 
-  const removeImage = (index: number) => {
+  const removerVariacaoNova = (index: number) => {
     setNovoProduto((prev) => ({
       ...prev,
-      imagens: prev.imagens.filter((_, i) => i !== index),
+      variations: prev.variations.filter((_, i) => i !== index),
     }))
   }
 
-  const capturePhoto = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-      const video = document.createElement("video")
-      video.srcObject = stream
-      video.play()
-
-      const canvas = document.createElement("canvas")
-      const context = canvas.getContext("2d")
-
-      video.addEventListener("loadedmetadata", () => {
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        context?.drawImage(video, 0, 0)
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const file = new File([blob], `foto-${Date.now()}.jpg`, { type: "image/jpeg" })
-              setNovoProduto((prev) => ({
-                ...prev,
-                imagens: [...prev.imagens, file].slice(0, 5),
-              }))
-            }
-          },
-          "image/jpeg",
-          0.8,
-        )
-
-        stream.getTracks().forEach((track) => track.stop())
-      })
-    } catch (error) {
-      alert("Erro ao acessar a câmera. Verifique as permissões.")
-    }
-  }
-
-  const previewImage = (file: File) => {
-    const url = URL.createObjectURL(file)
-    setImagemPreview(url)
-    setPreviewOpen(true)
+  const atualizarVariacaoNova = (index: number, field: keyof typeof novaVariacao, value: any) => {
+    setNovoProduto((prev) => ({
+      ...prev,
+      variations: prev.variations.map((v, i) => (i === index ? { ...v, [field]: value } : v)),
+    }))
   }
 
   if (produtoSelecionado) {
@@ -199,222 +153,215 @@ export function GestaoEstoque() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Gestão de Estoque</h2>
-          <p className="text-muted-foreground">Gerencie seus produtos e controle o estoque</p>
+          <p className="text-muted-foreground">Gerencie seus produtos e controle o estoque por variações</p>
         </div>
 
         <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
           <DialogTrigger asChild>
-            <Button onClick={abrirDialogoAdicao}>
+            <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Adicionar ao Estoque
+              Adicionar Produto
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{produtoEditando ? "Editar Produto" : "Adicionar ao Estoque"}</DialogTitle>
-              <DialogDescription>
-                {produtoEditando
-                  ? "Atualize as informações do produto."
-                  : "Escolha se deseja adicionar um produto novo ou repor estoque de um existente."}
-              </DialogDescription>
+              <DialogTitle>Adicionar Novo Produto</DialogTitle>
+              <DialogDescription>Crie um novo produto com suas variações de cores.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
-                {!produtoEditando && (
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right">Tipo</Label>
-                    <div className="col-span-3 flex gap-4">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="radio"
-                          value="novo"
-                          checked={tipoAdicao === "novo"}
-                          onChange={(e) => setTipoAdicao(e.target.value as "novo" | "existente")}
-                        />
-                        <span>Produto Novo</span>
-                      </label>
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="radio"
-                          value="existente"
-                          checked={tipoAdicao === "existente"}
-                          onChange={(e) => setTipoAdicao(e.target.value as "novo" | "existente")}
-                        />
-                        <span>Produto Existente</span>
-                      </label>
-                    </div>
-                  </div>
-                )}
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    Nome
+                  </Label>
+                  <Input
+                    id="name"
+                    value={novoProduto.name}
+                    onChange={(e) => setNovoProduto({ ...novoProduto, name: e.target.value })}
+                    className="col-span-3"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="description" className="text-right">
+                    Descrição
+                  </Label>
+                  <Input
+                    id="description"
+                    value={novoProduto.description}
+                    onChange={(e) => setNovoProduto({ ...novoProduto, description: e.target.value })}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="category" className="text-right">
+                    Categoria
+                  </Label>
+                  <Select
+                    value={novoProduto.category}
+                    onValueChange={(value) => setNovoProduto({ ...novoProduto, category: value })}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Selecione uma categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Copos e Canecas">Copos e Canecas</SelectItem>
+                      <SelectItem value="Garrafas e Squezzes">Garrafas e Squezzes</SelectItem>
+                      <SelectItem value="Chaveiros e Acessórios">Chaveiros e Acessórios</SelectItem>
+                      <SelectItem value="Escritório">Escritório</SelectItem>
+                      <SelectItem value="Facas e Utensílios">Facas e Utensílios</SelectItem>
+                      <SelectItem value="Kits e Conjuntos">Kits e Conjuntos</SelectItem>
+                      <SelectItem value="Utensílios">Utensílios</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="basePrice" className="text-right">
+                    Preço Base
+                  </Label>
+                  <Input
+                    id="basePrice"
+                    type="number"
+                    step="0.01"
+                    value={novoProduto.basePrice}
+                    onChange={(e) =>
+                      setNovoProduto({ ...novoProduto, basePrice: Number.parseFloat(e.target.value) || 0 })
+                    }
+                    className="col-span-3"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="provider" className="text-right">
+                    Fornecedor
+                  </Label>
+                  <Input
+                    id="provider"
+                    value={novoProduto.provider}
+                    onChange={(e) => setNovoProduto({ ...novoProduto, provider: e.target.value })}
+                    className="col-span-3"
+                    required
+                  />
+                </div>
 
-                {tipoAdicao === "existente" && !produtoEditando && (
-                  <>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="produto-existente" className="text-right">
-                        Produto
-                      </Label>
-                      <Select value={produtoExistenteSelecionado} onValueChange={setProdutoExistenteSelecionado}>
-                        <SelectTrigger className="col-span-3">
-                          <SelectValue placeholder="Selecione um produto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {produtos.map((produto) => (
-                            <SelectItem key={produto.id} value={produto.id}>
-                              {produto.nome} - Estoque atual: {produto.quantidade}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="quantidade-adicionar" className="text-right">
-                        Quantidade
-                      </Label>
-                      <Input
-                        id="quantidade-adicionar"
-                        type="number"
-                        min="1"
-                        value={quantidadeAdicionar}
-                        onChange={(e) => setQuantidadeAdicionar(Number.parseInt(e.target.value) || 0)}
-                        className="col-span-3"
-                        placeholder="Quantidade a adicionar"
-                        required
-                      />
-                    </div>
-                  </>
-                )}
-
-                {(tipoAdicao === "novo" || produtoEditando) && (
-                  <>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="nome" className="text-right">
-                        Nome
-                      </Label>
-                      <Input
-                        id="nome"
-                        value={novoProduto.nome}
-                        onChange={(e) => setNovoProduto({ ...novoProduto, nome: e.target.value })}
-                        className="col-span-3"
-                        required
-                        disabled={!!produtoEditando}
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="categoria" className="text-right">
-                        Categoria
-                      </Label>
-                      <Select
-                        value={novoProduto.categoria}
-                        onValueChange={(value) => setNovoProduto({ ...novoProduto, categoria: value })}
-                        disabled={!!produtoEditando}
-                      >
-                        <SelectTrigger className="col-span-3">
-                          <SelectValue placeholder="Selecione uma categoria" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Copos e Canecas">Copos e Canecas</SelectItem>
-                          <SelectItem value="Garrafas e Squezzes">Garrafaz e Squezzes</SelectItem>
-                          <SelectItem value="Chaveiros e Acessórios">Chaveiros e Acessórios</SelectItem>
-                          <SelectItem value="Escritório">Escritório</SelectItem>
-                          <SelectItem value="Facas e Utensílios">Facas e Utensílios</SelectItem>
-                          <SelectItem value="Kits e Conjuntos">Kits e Conjuntos</SelectItem>
-                          <SelectItem value="Utencilios">Utencilios</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="quantidade" className="text-right">
-                        Quantidade
-                      </Label>
-                      <Input
-                        id="quantidade"
-                        type="number"
-                        value={novoProduto.quantidade}
-                        onChange={(e) =>
-                          setNovoProduto({ ...novoProduto, quantidade: Number.parseInt(e.target.value) || 0 })
-                        }
-                        className="col-span-3"
-                        required
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="preco" className="text-right">
-                        Preço
-                      </Label>
-                      <Input
-                        id="preco"
-                        type="number"
-                        step="0.01"
-                        value={novoProduto.preco}
-                        onChange={(e) =>
-                          setNovoProduto({ ...novoProduto, preco: Number.parseFloat(e.target.value) || 0 })
-                        }
-                        className="col-span-3"
-                        required
-                        disabled={!!produtoEditando}
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="fornecedor" className="text-right">
-                        Fornecedor
-                      </Label>
-                      <Input
-                        id="fornecedor"
-                        value={novoProduto.fornecedor}
-                        onChange={(e) => setNovoProduto({ ...novoProduto, fornecedor: e.target.value })}
-                        className="col-span-3"
-                        required
-                        disabled={!!produtoEditando}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-4 items-start gap-4">
-                      <Label className="text-right mt-2">Imagens</Label>
-                      <div className="col-span-3">
-                        <ImageGallery
-                          images={novoProduto.imagensExistentes}
-                          productName={novoProduto.nome || "Novo produto"}
-                          onAddImages={(files) => {
-                            setNovoProduto((prev) => ({
-                              ...prev,
-                              imagens: [...prev.imagens, ...files].slice(0, 5),
-                            }))
-                          }}
-                          onRemoveImage={(index) => {
-                            setNovoProduto((prev) => ({
-                              ...prev,
-                              imagensExistentes: prev.imagensExistentes.filter((_, i) => i !== index),
-                            }))
-                          }}
-                          editable={true}
-                        />
+                <div className="col-span-4">
+                  <Label className="text-sm font-medium">Variações de Cores</Label>
+                  <div className="space-y-3 mt-2">
+                    {novoProduto.variations.map((variation, index) => (
+                      <div key={index} className="border rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-medium">Variação {index + 1}</h4>
+                          {novoProduto.variations.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removerVariacaoNova(index)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label htmlFor={`color-${index}`} className="text-xs">
+                              Cor
+                            </Label>
+                            <Input
+                              id={`color-${index}`}
+                              value={variation.color}
+                              onChange={(e) => atualizarVariacaoNova(index, "color", e.target.value)}
+                              placeholder="Ex: Azul, Vermelho"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`quantity-${index}`} className="text-xs">
+                              Quantidade
+                            </Label>
+                            <Input
+                              id={`quantity-${index}`}
+                              type="number"
+                              value={variation.quantity}
+                              onChange={(e) =>
+                                atualizarVariacaoNova(index, "quantity", Number.parseInt(e.target.value) || 0)
+                              }
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor={`image-${index}`} className="text-xs">
+                            Imagem (opcional)
+                          </Label>
+                          <Input
+                            id={`image-${index}`}
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => atualizarVariacaoNova(index, "image", e.target.files?.[0])}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </>
-                )}
+                    ))}
+                    <Button type="button" variant="outline" onClick={adicionarNovaVariacao} className="w-full">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Adicionar Variação
+                    </Button>
+                  </div>
+                </div>
               </div>
               <DialogFooter>
-                <Button type="submit">
-                  {produtoEditando ? "Atualizar" : tipoAdicao === "novo" ? "Adicionar Produto" : "Adicionar ao Estoque"}
-                </Button>
+                <Button type="submit">Adicionar Produto</Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
 
-        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent className="sm:max-w-[600px]">
+        {/* Dialog para adicionar variação a produto existente */}
+        <Dialog open={dialogVariacaoAberto} onOpenChange={setDialogVariacaoAberto}>
+          <DialogContent className="sm:max-w-[400px]">
             <DialogHeader>
-              <DialogTitle>Preview da Imagem</DialogTitle>
+              <DialogTitle>Adicionar Nova Variação</DialogTitle>
+              <DialogDescription>Adicione uma nova cor para este produto.</DialogDescription>
             </DialogHeader>
-            {imagemPreview && (
-              <div className="flex justify-center">
-                <img
-                  src={imagemPreview || "/placeholder.svg"}
-                  alt="Preview"
-                  className="max-w-full max-h-96 object-contain rounded"
-                />
+            <form onSubmit={handleSubmitVariacao}>
+              <div className="grid gap-4 py-4">
+                <div>
+                  <Label htmlFor="nova-cor">Cor</Label>
+                  <Input
+                    id="nova-cor"
+                    value={novaVariacao.color}
+                    onChange={(e) => setNovaVariacao({ ...novaVariacao, color: e.target.value })}
+                    placeholder="Ex: Verde, Amarelo"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="nova-quantidade">Quantidade</Label>
+                  <Input
+                    id="nova-quantidade"
+                    type="number"
+                    value={novaVariacao.quantity}
+                    onChange={(e) =>
+                      setNovaVariacao({ ...novaVariacao, quantity: Number.parseInt(e.target.value) || 0 })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="nova-imagem">Imagem (opcional)</Label>
+                  <Input
+                    id="nova-imagem"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setNovaVariacao({ ...novaVariacao, image: e.target.files?.[0] })}
+                  />
+                </div>
               </div>
-            )}
+              <DialogFooter>
+                <Button type="submit">Adicionar Variação</Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -429,7 +376,7 @@ export function GestaoEstoque() {
           <CardContent>
             <div className="text-2xl font-bold">{produtos.length}</div>
             <p className="text-xs text-muted-foreground">
-              {produtos.reduce((acc, p) => acc + p.quantidade, 0)} itens em estoque
+              {produtos.reduce((acc, p) => acc + getTotalQuantity(p), 0)} itens em estoque
             </p>
           </CardContent>
         </Card>
@@ -463,7 +410,7 @@ export function GestaoEstoque() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              R$ {produtos.reduce((acc, p) => acc + p.quantidade * p.preco, 0).toFixed(2)}
+              R$ {produtos.reduce((acc, p) => acc + getTotalValue(p), 0).toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground">Valor em estoque</p>
           </CardContent>
@@ -523,72 +470,115 @@ export function GestaoEstoque() {
                 <Package className="h-5 w-5" />
                 Produtos em Estoque ({produtosFiltrados.length})
               </CardTitle>
-              <CardDescription>Lista completa de produtos cadastrados</CardDescription>
+              <CardDescription>Lista completa de produtos com suas variações</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Imagem</TableHead>
-                    <TableHead>Produto</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead>Quantidade</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Preço</TableHead>
-                    <TableHead>Valor Total</TableHead>
-                    <TableHead>Fornecedor</TableHead>
-                    <TableHead>Data Entrada</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {produtosFiltrados.map((produto) => {
-                    const status = getStatusEstoque(produto.quantidade)
-                    return (
-                      <TableRow key={produto.id}>
-                        <TableCell>
-                          <ImageGallery
-                            images={produto.image ? [produto.image] : []}
-                            productName={produto.nome}
-                            editable={false} // Importante: para modo de visualização simples
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium">{produto.nome}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{produto.categoria}</Badge>
-                        </TableCell>
-                        <TableCell className="font-mono">{produto.quantidade}</TableCell>
-                        <TableCell>
-                          <Badge variant={status.variant}>{status.label}</Badge>
-                        </TableCell>
-                        <TableCell>R$ {produto.preco.toFixed(2)}</TableCell>
-                        <TableCell className="font-medium">
-                          R$ {(produto.quantidade * produto.preco).toFixed(2)}
-                        </TableCell>
-                        <TableCell>{produto.fornecedor}</TableCell>
-                        <TableCell>
-                        {produto.data_entrada
-                          ? new Date(produto.data_entrada).toLocaleDateString("pt-BR", { timeZone: 'UTC' })
-                          : "Não informada"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => setProdutoSelecionado(produto.id)}>
-                              Ver Detalhes
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => abrirEdicao(produto)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => removerProduto(produto.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+              <div className="space-y-4">
+                {produtosFiltrados.map((produto) => {
+                  const totalQuantity = getTotalQuantity(produto)
+                  const status = getStatusEstoque(totalQuantity)
+
+                  return (
+                    <Card key={produto.id} className="p-4">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="text-lg font-semibold">{produto.name}</h3>
+                            <Badge variant="outline">{produto.category}</Badge>
+                            <Badge variant={status.variant}>{status.label}</Badge>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
+                          {produto.description && (
+                            <p className="text-sm text-muted-foreground mb-2">{produto.description}</p>
+                          )}
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                            <span>Fornecedor: {produto.provider}</span>
+                            {/* Adicionamos ( ... || 0) para garantir que sempre seja um número */}
+                            <span>Preço: R$ {(produto.basePrice || 0).toFixed(2)}</span>
+                            <span>Total: {totalQuantity} unidades</span>
+                            <span>Valor: R$ {(getTotalValue(produto) || 0).toFixed(2)}</span>
+                        </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setProdutoSelecionadoVariacao(produto.id)
+                              setDialogVariacaoAberto(true)
+                            }}
+                          >
+                            <Palette className="h-4 w-4 mr-1" />
+                            Nova Cor
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setProdutoSelecionado(produto.id)}>
+                            Ver Detalhes
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => removerProduto(produto.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Variações */}
+                      <div className="border-t pt-4">
+                        <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                          <Palette className="h-4 w-4" />
+                          Variações ({produto.variations.length})
+                        </h4>
+                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                          {produto.variations.map((variation) => {
+                            const variationStatus = getStatusEstoque(variation.quantity)
+                            return (
+                              <div key={variation.id} className="border rounded-lg p-3 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className="w-4 h-4 rounded-full border"
+                                      style={{ backgroundColor: variation.color.toLowerCase() }}
+                                      title={variation.color}
+                                    />
+                                    <span className="font-medium text-sm">{variation.color}</span>
+                                  </div>
+                                  <Badge variant={variationStatus.variant} className="text-xs">
+                                    {variation.quantity}
+                                  </Badge>
+                                </div>
+                                {variation.image && (
+                                  <div className="w-full h-20 bg-gray-100 rounded overflow-hidden">
+                                    <img
+                                      src={variation.image || "/placeholder.svg"}
+                                      alt={`${produto.name} - ${variation.color}`}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                )}
+                                <div className="flex gap-1">
+                                  <Input
+                                    type="number"
+                                    value={variation.quantity}
+                                    onChange={(e) =>
+                                      atualizarQuantidadeVariacao(variation.id, Number.parseInt(e.target.value) || 0)
+                                    }
+                                    className="text-xs h-8"
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => removerVariacao(variation.id)}
+                                    className="h-8 px-2"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                })}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -609,7 +599,7 @@ export function GestaoEstoque() {
                     <TableRow>
                       <TableHead>Produto</TableHead>
                       <TableHead>Categoria</TableHead>
-                      <TableHead>Quantidade</TableHead>
+                      <TableHead>Quantidade Total</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Fornecedor</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
@@ -617,20 +607,21 @@ export function GestaoEstoque() {
                   </TableHeader>
                   <TableBody>
                     {produtosBaixoEstoque.map((produto) => {
-                      const status = getStatusEstoque(produto.quantidade)
+                      const totalQuantity = getTotalQuantity(produto)
+                      const status = getStatusEstoque(totalQuantity)
                       return (
                         <TableRow key={produto.id}>
-                          <TableCell className="font-medium">{produto.nome}</TableCell>
-                          <TableCell>{produto.categoria}</TableCell>
-                          <TableCell className="font-mono">{produto.quantidade}</TableCell>
+                          <TableCell className="font-medium">{produto.name}</TableCell>
+                          <TableCell>{produto.category}</TableCell>
+                          <TableCell className="font-mono">{totalQuantity}</TableCell>
                           <TableCell>
                             <Badge variant={status.variant}>{status.label}</Badge>
                           </TableCell>
-                          <TableCell>{produto.fornecedor}</TableCell>
+                          <TableCell>{produto.provider}</TableCell>
                           <TableCell className="text-right">
-                            <Button variant="outline" size="sm" onClick={() => abrirEdicao(produto)}>
+                            <Button variant="outline" size="sm" onClick={() => setProdutoSelecionado(produto.id)}>
                               <Pencil className="h-4 w-4" />
-                              Repor
+                              Gerenciar
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -670,22 +661,20 @@ export function GestaoEstoque() {
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                <TableBody>
                     {produtosSemEstoque.map((produto) => (
-                      <TableRow key={produto.id}>
-                        <TableCell className="font-medium">{produto.nome}</TableCell>
-                        <TableCell>{produto.categoria}</TableCell>
-                        <TableCell>R$ {produto.preco.toFixed(2)}</TableCell>
-                        <TableCell>{produto.fornecedor}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="default" size="sm" onClick={() => abrirEdicao(produto)}>
-                            <Plus className="h-4 w-4 mr-1" />
-                            Repor Estoque
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                        <TableRow key={produto.id}>
+                            <TableCell className="font-medium">{produto.name}</TableCell>
+                            <TableCell>{produto.category}</TableCell>
+                            {/* Adicionamos ( ... || 0) para garantir que sempre seja um número */}
+                            <TableCell>R$ {(produto.basePrice || 0).toFixed(2)}</TableCell>
+                            <TableCell>{produto.provider}</TableCell>
+                            <TableCell className="text-right">
+                                {/* ... */}
+                            </TableCell>
+                        </TableRow>
                     ))}
-                  </TableBody>
+                </TableBody>
                 </Table>
               ) : (
                 <div className="text-center py-8">

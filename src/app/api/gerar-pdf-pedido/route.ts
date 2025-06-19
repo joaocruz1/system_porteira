@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       headers,
       status: 200,
     });
-
+    
   } catch (error) {
     console.error('[API GERAR PDF PEDIDO] Erro:', error);
     return NextResponse.json(
