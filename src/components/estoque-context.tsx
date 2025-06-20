@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import { toast } from "sonner"
 
-export interface ProductVariation {
+export interface ProductVariante {
   id: string
   color: string
   quantity: number
@@ -13,14 +13,14 @@ export interface ProductVariation {
 
 export interface Produto {
   id: string
-  name: string
-  description?: string
+  nome: string
   quantidade: number
-  category: string
+  categoria : string
+  preco: string
   basePrice: number
-  provider: string
-  createdAt: string
-  variations: ProductVariation[]
+  fornecedor: string
+  data_entrada: string
+  variations: ProductVariante[]
 }
 
 export interface Pedido {
@@ -159,7 +159,7 @@ export function EstoqueProvider({
       const produtosData = await produtosResponse.json()
       const perdasData = await perdasResponse.json()
       const custosData = await custosResponse.json()
-
+      console.log(produtosData)
       const rawPedidosFromApi = await pedidosResponse.json()
       if (!Array.isArray(rawPedidosFromApi)) throw new Error("Resposta de pedidos não é um array.")
 

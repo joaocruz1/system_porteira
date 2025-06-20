@@ -19,6 +19,18 @@ model loginUser {
   dataCriacao DateTime?
 }
 
+
+model ProdutoVariante {
+  id           String    @id @default(uuid())
+  cor          String
+  quantidade   Int
+  image        String? // No Prisma é 'image', no DB também é 'image'
+  sku          String
+  productId   String
+
+  produto Produto @relation(fields: [productId], references: [id])
+}
+
 model Produto {
   id           String    @id @default(uuid()) @map("id_produt") // No Prisma é 'id', no DB é 'id_produto'
   nome         String
@@ -28,15 +40,7 @@ model Produto {
   fornecedor   String?
   data_entrada DateTime? @map("data_entrada") // No Prisma é 'data_entrada', no DB também é 'data_entrada'
   image        String? // No Prisma é 'image', no DB também é 'image'
-}
-
-model ProdutoVariante {
-  id           String    @id @default(uuid())
-  cor          String
-  quantidade   String
-  image        String? // No Prisma é 'image', no DB também é 'image'
-  sku          String
-  productId   String
+  variacoes   ProdutoVariante[]
 }
 
 model Pedido {

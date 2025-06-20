@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ArrowLeft, Package, DollarSign, Edit, History, TrendingUp, Palette, Plus, Trash2 } from "lucide-react"
-import { useEstoque, type ProductVariation } from "@/components/estoque-context"
+import { useEstoque, type ProductVariante } from "@/components/estoque-context"
 import { useState } from "react"
 
 interface DetalhesProdutoProps {
@@ -84,7 +84,7 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
     }
   }
 
-  const iniciarEdicaoQuantidade = (variation: ProductVariation) => {
+  const iniciarEdicaoQuantidade = (variation: ProductVariante) => {
     setNovaQuantidade(variation.quantity)
     setEditandoVariacao(variation.id)
   }
@@ -105,7 +105,7 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
             Voltar
           </Button>
           <div>
-            <h2 className="text-2xl font-bold">{produto.name}</h2>
+            <h2 className="text-2xl font-bold">{produto.nome}</h2>
             <p className="text-muted-foreground">Detalhes completos do produto com variações</p>
           </div>
         </div>
@@ -133,22 +133,16 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
           <CardContent className="space-y-4">
             <div>
               <p className="text-sm text-muted-foreground">Categoria</p>
-              <Badge variant="outline">{produto.category}</Badge>
+              <Badge variant="outline">{produto.categoria}</Badge>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Fornecedor</p>
-              <p className="font-semibold">{produto.provider}</p>
+              <p className="font-semibold">{produto.fornecedor}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Data de Criação</p>
-              <p className="font-semibold">{new Date(produto.createdAt).toLocaleDateString("pt-BR")}</p>
+              <p className="font-semibold">{new Date(produto.data_entrada).toLocaleDateString("pt-BR")}</p>
             </div>
-            {produto.description && (
-              <div>
-                <p className="text-sm text-muted-foreground">Descrição</p>
-                <p className="font-semibold">{produto.description}</p>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -255,7 +249,7 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
                       <div className="w-full h-32 bg-gray-100 rounded overflow-hidden">
                         <img
                           src={variation.image || "/placeholder.svg"}
-                          alt={`${produto.name} - ${variation.color}`}
+                          alt={`${produto.nome} - ${variation.color}`}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -409,7 +403,7 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
               <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Atenção: Estoque Baixo</h4>
               <p className="text-sm text-yellow-700">
                 Este produto está com estoque baixo. Considere fazer uma reposição junto ao fornecedor{" "}
-                <strong>{produto.provider}</strong>.
+                <strong>{produto.fornecedor}</strong>.
               </p>
             </div>
           )}
@@ -430,7 +424,7 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Adicionar Nova Variação</DialogTitle>
-            <DialogDescription>Adicione uma nova cor para {produto.name}.</DialogDescription>
+            <DialogDescription>Adicione uma nova cor para {produto.nome}.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div>

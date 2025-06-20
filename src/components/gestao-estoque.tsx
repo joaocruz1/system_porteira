@@ -39,14 +39,17 @@ export function GestaoEstoque() {
   const [produtoSelecionadoVariacao, setProdutoSelecionadoVariacao] = useState<string | null>(null)
   const [filtroCategoria, setFiltroCategoria] = useState("todas")
   const [busca, setBusca] = useState("")
+
+  // --- CORREÇÃO 1: Adicionar um ID temporário (`tempId`) ao estado das variações ---
   const [novoProduto, setNovoProduto] = useState({
     name: "",
     description: "",
     category: "",
     basePrice: 0,
     provider: "",
-    variations: [{ color: "", quantity: 0, image: undefined as File | undefined }],
+    variations: [{ tempId: Date.now(), color: "", quantity: 0, image: undefined as File | undefined }],
   })
+
   const [novaVariacao, setNovaVariacao] = useState({
     color: "",
     quantity: 0,
@@ -55,12 +58,12 @@ export function GestaoEstoque() {
 
   const [produtoSelecionado, setProdutoSelecionado] = useState<string | null>(null)
 
-    // Calcular totais considerando todas as variações
+  // Calcular totais considerando todas as variações
   const getTotalQuantity = (produto: Produto) => {
-    if (!produto || !Array.isArray(produto.variations)) {
-      return 0
-    }
-    return produto.variations.reduce((total, variation) => total + (variation.quantity || 0), 0)
+    if (!produto || !Array.isArray(produto.variations)) {
+      return 0
+    }
+    return produto.variations.reduce((total, variation) => total + (variation.quantity || 0), 0)
   }
 
   const getTotalValue = (produto: Produto) => {
@@ -68,10 +71,10 @@ export function GestaoEstoque() {
   }
 
   const produtosFiltrados = produtos.filter((produto) => {
-    const matchCategoria = filtroCategoria === "todas" || produto.category === filtroCategoria
+    const matchCategoria = filtroCategoria === "todas" || produto.categoria === filtroCategoria
     const matchBusca =
-      (produto.name?.toLowerCase().includes(busca.toLowerCase()) ||
-      produto.provider?.toLowerCase().includes(busca.toLowerCase())) ?? false
+      (produto.nome?.toLowerCase().includes(busca.toLowerCase()) ||
+      produto.fornecedor?.toLowerCase().includes(busca.toLowerCase())) ?? false
     return matchCategoria && matchBusca
   })
 
@@ -89,7 +92,7 @@ export function GestaoEstoque() {
     )
   }
 
-  const categorias = ["todas", ...Array.from(new Set(produtos.map((p) => p.category)))]
+  const categorias = ["todas", ...Array.from(new Set(produtos.map((p) => p.categoria)))]
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -101,7 +104,7 @@ export function GestaoEstoque() {
       category: "",
       basePrice: 0,
       provider: "",
-      variations: [{ color: "", quantity: 0, image: undefined }],
+      variations: [{ tempId: Date.now(), color: "", quantity: 0, image: undefined }],
     })
   }
 
@@ -123,17 +126,19 @@ export function GestaoEstoque() {
     return { label: "Alto", variant: "default" as const }
   }
 
+  // --- CORREÇÃO 2: Garantir que a nova variação também tenha um `tempId` ---
   const adicionarNovaVariacao = () => {
     setNovoProduto((prev) => ({
       ...prev,
-      variations: [...prev.variations, { color: "", quantity: 0, image: undefined }],
+      variations: [...prev.variations, { tempId: Date.now(), color: "", quantity: 0, image: undefined }],
     }))
   }
 
-  const removerVariacaoNova = (index: number) => {
+  // --- CORREÇÃO 3: Remover a variação pelo `tempId` ao invés do `index` ---
+  const removerVariacaoNova = (tempId: number) => {
     setNovoProduto((prev) => ({
       ...prev,
-      variations: prev.variations.filter((_, i) => i !== index),
+      variations: prev.variations.filter((v) => v.tempId !== tempId),
     }))
   }
 
@@ -147,7 +152,7 @@ export function GestaoEstoque() {
   if (produtoSelecionado) {
     return <DetalhesProduto produtoId={produtoSelecionado} onVoltar={() => setProdutoSelecionado(null)} />
   }
-
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -247,8 +252,9 @@ export function GestaoEstoque() {
                 <div className="col-span-4">
                   <Label className="text-sm font-medium">Variações de Cores</Label>
                   <div className="space-y-3 mt-2">
+                    {/* --- CORREÇÃO 4: Usar o `tempId` como `key` e na função de remover --- */}
                     {novoProduto.variations.map((variation, index) => (
-                      <div key={index} className="border rounded-lg p-3 space-y-2">
+                      <div key={variation.tempId} className="border rounded-lg p-3 space-y-2">
                         <div className="flex items-center justify-between">
                           <h4 className="text-sm font-medium">Variação {index + 1}</h4>
                           {novoProduto.variations.length > 1 && (
@@ -256,7 +262,7 @@ export function GestaoEstoque() {
                               type="button"
                               variant="outline"
                               size="sm"
-                              onClick={() => removerVariacaoNova(index)}
+                              onClick={() => removerVariacaoNova(variation.tempId)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -483,16 +489,12 @@ export function GestaoEstoque() {
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <h3 className="text-lg font-semibold">{produto.name}</h3>
-                            <Badge variant="outline">{produto.category}</Badge>
+                            <h3 className="text-lg font-semibold">{produto.nome}</h3>
+                            <Badge variant="outline">{produto.categoria}</Badge>
                             <Badge variant={status.variant}>{status.label}</Badge>
                           </div>
-                          {produto.description && (
-                            <p className="text-sm text-muted-foreground mb-2">{produto.description}</p>
-                          )}
                         <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                            <span>Fornecedor: {produto.provider}</span>
-                            {/* Adicionamos ( ... || 0) para garantir que sempre seja um número */}
+                            <span>Fornecedor: {produto.fornecedor}</span>
                             <span>Preço: R$ {(produto.basePrice || 0).toFixed(2)}</span>
                             <span>Total: {totalQuantity} unidades</span>
                             <span>Valor: R$ {(getTotalValue(produto) || 0).toFixed(2)}</span>
@@ -547,7 +549,7 @@ export function GestaoEstoque() {
                                   <div className="w-full h-20 bg-gray-100 rounded overflow-hidden">
                                     <img
                                       src={variation.image || "/placeholder.svg"}
-                                      alt={`${produto.name} - ${variation.color}`}
+                                      alt={`${produto.nome} - ${variation.color}`}
                                       className="w-full h-full object-cover"
                                     />
                                   </div>
@@ -611,13 +613,13 @@ export function GestaoEstoque() {
                       const status = getStatusEstoque(totalQuantity)
                       return (
                         <TableRow key={produto.id}>
-                          <TableCell className="font-medium">{produto.name}</TableCell>
-                          <TableCell>{produto.category}</TableCell>
+                          <TableCell className="font-medium">{produto.nome}</TableCell>
+                          <TableCell>{produto.categoria}</TableCell>
                           <TableCell className="font-mono">{totalQuantity}</TableCell>
                           <TableCell>
                             <Badge variant={status.variant}>{status.label}</Badge>
                           </TableCell>
-                          <TableCell>{produto.provider}</TableCell>
+                          <TableCell>{produto.fornecedor}</TableCell>
                           <TableCell className="text-right">
                             <Button variant="outline" size="sm" onClick={() => setProdutoSelecionado(produto.id)}>
                               <Pencil className="h-4 w-4" />
@@ -664,11 +666,10 @@ export function GestaoEstoque() {
                 <TableBody>
                     {produtosSemEstoque.map((produto) => (
                         <TableRow key={produto.id}>
-                            <TableCell className="font-medium">{produto.name}</TableCell>
-                            <TableCell>{produto.category}</TableCell>
-                            {/* Adicionamos ( ... || 0) para garantir que sempre seja um número */}
+                            <TableCell className="font-medium">{produto.nome}</TableCell>
+                            <TableCell>{produto.categoria}</TableCell>
                             <TableCell>R$ {(produto.basePrice || 0).toFixed(2)}</TableCell>
-                            <TableCell>{produto.provider}</TableCell>
+                            <TableCell>{produto.fornecedor}</TableCell>
                             <TableCell className="text-right">
                                 {/* ... */}
                             </TableCell>

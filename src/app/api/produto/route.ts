@@ -118,6 +118,9 @@ export async function GET(request: NextRequest) {
   console.log("====== [APP ROUTER - GET /api/produto] Buscando produtos ======");
   try {
     const produtos = await prisma.produto.findMany({
+      include: { 
+        variacoes: true,
+       },
       orderBy: [ 
         { id: "desc" },
         { nome: "asc" },
