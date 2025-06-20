@@ -19,8 +19,6 @@ export async function DELETE(
   const params = await props.params;
   const id = params.id;
 
-  console.log("====== [APP ROUTER - DB DELETE /api/produto/delete/[id]] Deletando produto do DB ======");
-  console.log("[APP ROUTER] ID do produto para deletar:", id);
 
   // 1. Validação do ID
   if (!id) {
@@ -40,7 +38,6 @@ export async function DELETE(
 
     // Se chegou aqui, o produto foi deletado com sucesso.
     // O Prisma retorna o objeto deletado.
-    console.log("[DB DELETE] Produto deletado com sucesso do banco de dados:", deletedProduto);
     
     // Você pode retornar o objeto deletado ou apenas uma mensagem de sucesso/status 204.
     // Retornar o objeto deletado pode ser útil para o frontend confirmar.

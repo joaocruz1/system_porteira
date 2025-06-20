@@ -14,7 +14,6 @@ interface ErrorResponse {
 
 
 export async function POST(request: NextRequest) {
-  console.log("====== [API ROUTE - POST /api/custos] Adicionando Custo via FormData ======");
   
   try {
     const formData = await request.formData();
@@ -68,7 +67,6 @@ export async function POST(request: NextRequest) {
       data: custoData,
     });
     
-    console.log("====== Custo adicionado com sucesso via FormData ======", novoCusto.id);
     return NextResponse.json(novoCusto, { status: 201 });
 
   } catch (error: unknown) {
@@ -87,7 +85,6 @@ export async function POST(request: NextRequest) {
 
 //Este get está pronto para retornar apenas visualização dos custos anteriores
 export async function GET(request: NextRequest) {
-    console.log("====== [APP ROUTER - GET /api/custos] Buscando registos de custos ======");
     try {
         const custos = await prisma.custos.findMany({
             orderBy: [

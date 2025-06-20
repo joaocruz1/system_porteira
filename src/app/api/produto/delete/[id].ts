@@ -30,7 +30,6 @@ export default async function handler(
 
 
   const n8nWebhookUrl: string = `${N8N_WEBHOOK_BASE_URL}/produto/delete/${id}`;
-  console.log(`[PROXY API] Proxying DELETE request to: ${n8nWebhookUrl}`);
 
   try {
     const n8nResponse: Response = await fetch(n8nWebhookUrl, {

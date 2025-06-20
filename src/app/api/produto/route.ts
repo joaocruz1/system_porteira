@@ -10,7 +10,6 @@ interface ErrorResponse {
 }
 
 export async function POST(request: NextRequest) {
-  console.log("====== [APP ROUTER - POST /api/produto] Adicionando produto e variações ======");
   try {
     const formData = await request.formData();
 
@@ -54,8 +53,6 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      console.log("[DB TX] Produto principal criado:", produtoPrincipal.id);
-
       // 4.2. Iterar e criar cada variação
       const variacoesCriadas = [];
       for (let i = 0; i < variations.length; i++) {
@@ -68,7 +65,6 @@ export async function POST(request: NextRequest) {
           const blobFilename = `produtos/${produtoPrincipal.id}-${i}_${imageFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
           const blob = await put(blobFilename, imageFile, { access: 'public' });
           imageUrlInBlob = blob.url;
-          console.log(`[DB TX] Imagem da variação ${i} salva no Blob: ${imageUrlInBlob}`);
 
           // Se for a primeira imagem, atualiza a imagem principal do produto
           if (i === 0) {
@@ -91,8 +87,6 @@ export async function POST(request: NextRequest) {
         variacoesCriadas.push(novaVariacao);
       }
       
-      console.log("[DB TX] Variações criadas:", variacoesCriadas.length);
-      
       // Retornar o produto completo com suas variações
       return { ...produtoPrincipal, variacoes: variacoesCriadas };
     });
@@ -114,7 +108,6 @@ export async function POST(request: NextRequest) {
 
 
 export async function GET(request: NextRequest) {
-  console.log("====== [APP ROUTER - GET /api/produto] Buscando produtos ======");
   try {
     const produtosDoBanco = await prisma.produto.findMany({
       include: {

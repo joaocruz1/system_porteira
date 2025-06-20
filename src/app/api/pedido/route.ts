@@ -22,24 +22,6 @@ interface QuoteItemFromFrontend {
   totalPrice: number;
 }
 
-// 2. Remova ou comente a função ensureLogoUploadDirExists, pois não será mais necessária para os logos.
-/*
-async function ensureLogoUploadDirExists() {
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'logos');
-  try {
-    await stat(uploadDir);
-  } catch (e: any) {
-    if (e.code === 'ENOENT') {
-      console.log(`Criando diretório de uploads de logos: ${uploadDir}`);
-      await mkdir(uploadDir, { recursive: true });
-    } else {
-      console.error("Erro ao verificar/criar diretório de uploads de logos:", e);
-      throw e;
-    }
-  }
-  return uploadDir;
-}
-*/
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,8 +38,6 @@ export async function POST(request: NextRequest) {
     const quoteItems: QuoteItemFromFrontend[] | null = quoteItemsString ? JSON.parse(quoteItemsString) : null;
     const customerData: any | null = customerDataString ? JSON.parse(customerDataString) : null;
 
-    console.log("DADOS DO CLIENTE (parsed):", customerData);
-    console.log("ITENS DO ORÇAMENTO (parsed):", quoteItems);
 
     let totalCalculado = 0;
     if (quoteItems && quoteItems.length > 0) {
@@ -74,7 +54,6 @@ export async function POST(request: NextRequest) {
     let vectorizedSvgContent: string | null = null; // Para armazenar o conteúdo SVG vetorizado
 
     if (logoFile) {
-      console.log("[API POST /api/pedido] Processando arquivo de logo para vetorização e Vercel Blob:", logoFile.name);
 
       // --- CHAME A API DE VETORIZAÇÃO DO VECTORIZER.AI AQUI ---
       try {
@@ -121,7 +100,6 @@ export async function POST(request: NextRequest) {
 
         // A API Vectorizer.AI retorna o SVG diretamente no corpo da resposta
         vectorizedSvgContent = await vectorizerResponse.text(); 
-        console.log("[API POST /api/pedido] Logo vetorizado com sucesso pelo Vectorizer.AI!");
 
       } catch (vectorizationError) {
         console.error("Erro ao chamar a API de vetorização do Vectorizer.AI:", vectorizationError);
@@ -143,7 +121,6 @@ export async function POST(request: NextRequest) {
             contentType: 'image/svg+xml', // IMPRESCINDÍVEL para SVG
           });
           logoUrlInBlob = blob.url;
-          console.log(`[API POST /api/pedido] Arquivo SVG vetorizado salvo no Vercel Blob: ${logoUrlInBlob}`);
         } catch (uploadError) {
           console.error("Erro ao fazer upload do SVG vetorizado para o Vercel Blob:", uploadError);
           return NextResponse.json({ error: "Falha ao fazer upload do logo vetorizado para o Blob." }, { status: 500 });
@@ -154,9 +131,7 @@ export async function POST(request: NextRequest) {
         // return NextResponse.json({ error: "Não foi possível gerar um SVG vetorizado para o logo." }, { status: 500 });
       }
 
-    } else {
-      console.log("[API POST /api/pedido] Nenhum arquivo de logo (logoFile) foi recebido.");
-    }
+    } 
 
     const novoPedidoData = {
       data_pedido: new Date(),

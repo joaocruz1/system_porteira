@@ -20,9 +20,6 @@ export async function PUT(
   const routeParams = await context.params; // Resolvendo a Promise se necessário
   const id = routeParams.id;
 
-  console.log("====== [APP ROUTER - PUT /api/produtos/[id]] Atualizando produto no DB ======");
-  console.log("[APP ROUTER] ID do produto para atualizar:", id);
-
   if (!id) {
     return NextResponse.json<ErrorResponse>(
       { error: 'O ID do produto é obrigatório na URL.' },
@@ -62,7 +59,6 @@ export async function PUT(
       },
     });
 
-    console.log("[DB UPDATE] Produto atualizado com sucesso no banco de dados:", updatedProduto);
     return NextResponse.json(updatedProduto, { status: 200 });
 
   } catch (error: unknown) {

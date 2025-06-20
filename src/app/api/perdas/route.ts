@@ -16,7 +16,6 @@ interface ErrorResponse {
 
 
 export async function POST(request: NextRequest) {
-  console.log("====== [APP ROUTER - POST /api/perdas] Adicionando produto ======");
   try {
     const formData = await request.formData();
 
@@ -36,7 +35,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json<ErrorResponse>({ error: '"valorTotal" deve ser um número válido.' }, { status: 400 });
     }
     
-    console.log("[API POST /perdas] Conteúdo do formData para imageFile:", imageFile ? imageFile.name : "Nenhum arquivo recebido como imageFile");
 
     if (!produtoId) {
       return NextResponse.json<ErrorResponse>({ error: 'Campo "produtoId" é obrigatório.' }, { status: 400 });
@@ -51,7 +49,6 @@ export async function POST(request: NextRequest) {
     let imageUrlInBlob: string | null = null; // Para armazenar a URL do Blob
 
     if (imageFile) {
-      console.log("[API POST /perdas] Processando arquivo de imagem para o Vercel Blob:", imageFile.name);
       
       // 3. Fazer o upload para o Vercel Blob
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -65,13 +62,10 @@ export async function POST(request: NextRequest) {
           // contentType: imageFile.type, // Opcional, o Vercel Blob geralmente infere isso
         });
         imageUrlInBlob = blob.url; // Armazena a URL retornada pelo Vercel Blob
-        console.log(`[API POST /perdas] Arquivo de imagem salvo no Vercel Blob: ${imageUrlInBlob}`);
       } catch (uploadError) {
         console.error("Erro ao fazer upload da imagem do produto para o Vercel Blob:", uploadError);
         return NextResponse.json<ErrorResponse>({ error: "Falha ao fazer upload da imagem do produto." }, { status: 500 });
       }
-    } else {
-      console.log("[API POST /perdas] Nenhum arquivo de imagem (imageFile) foi recebido ou processado.");
     }
 
     const novaPerdaData: any = {
@@ -107,7 +101,6 @@ export async function POST(request: NextRequest) {
 
 //Este get está pronto para retornar apenas visualização perdas anteriores, para puxar produt
 export async function GET(request: NextRequest) {
-  console.log("====== [APP ROUTER - GET /api/perdas] Buscando produtos ======");
   try {
     const perdas = await prisma.perdas.findMany({
       orderBy: [ 
