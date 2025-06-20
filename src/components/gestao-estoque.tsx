@@ -66,23 +66,23 @@ export function GestaoEstoque() {
 
   const getTotalValue = (produto: Produto) => {
     // CORREÇÃO PREVENTIVA: Garante que basePrice seja um número antes de multiplicar
-    const basePrice = typeof produto.basePrice === 'number' ? produto.basePrice : 0;
+    const basePrice = typeof produto.preco === "number" ? produto.preco : 0
     return getTotalQuantity(produto) * basePrice
   }
 
   const produtosFiltrados = produtos.filter((produto) => {
     // Adicionado para segurança, caso um 'produto' inteiro seja nulo no array
-    if (!produto) return false;
-    
-    const matchCategoria = filtroCategoria === "todas" || produto.categoria === filtroCategoria;
-    
+    if (!produto) return false
+
+    const matchCategoria = filtroCategoria === "todas" || produto.categoria === filtroCategoria
+
     // CORREÇÃO 1: Tratamento robusto para valores nulos/indefinidos em nome e fornecedor
     const matchBusca =
-      (produto.nome || '').toLowerCase().includes(busca.toLowerCase()) ||
-      (produto.fornecedor || '').toLowerCase().includes(busca.toLowerCase());
+      (produto.nome || "").toLowerCase().includes(busca.toLowerCase()) ||
+      (produto.fornecedor || "").toLowerCase().includes(busca.toLowerCase())
 
-    return matchCategoria && matchBusca;
-  });
+    return matchCategoria && matchBusca
+  })
 
   const produtosBaixoEstoque = produtos.filter((p) => p && getTotalQuantity(p) < 20)
   const produtosSemEstoque = produtos.filter((p) => p && getTotalQuantity(p) === 0)
@@ -157,7 +157,7 @@ export function GestaoEstoque() {
   if (produtoSelecionado) {
     return <DetalhesProduto produtoId={produtoSelecionado} onVoltar={() => setProdutoSelecionado(null)} />
   }
-  
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -173,45 +173,39 @@ export function GestaoEstoque() {
               Adicionar Produto
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto mx-4 sm:mx-0">
             <DialogHeader>
               <DialogTitle>Adicionar Novo Produto</DialogTitle>
               <DialogDescription>Crie um novo produto com suas variações de cores.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    Nome
-                  </Label>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome</Label>
                   <Input
                     id="name"
                     value={novoProduto.name}
                     onChange={(e) => setNovoProduto({ ...novoProduto, name: e.target.value })}
-                    className="col-span-3"
                     required
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="description" className="text-right">
-                    Descrição
-                  </Label>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição</Label>
                   <Input
                     id="description"
                     value={novoProduto.description}
                     onChange={(e) => setNovoProduto({ ...novoProduto, description: e.target.value })}
-                    className="col-span-3"
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="category" className="text-right">
-                    Categoria
-                  </Label>
+
+                <div className="space-y-2">
+                  <Label htmlFor="category">Categoria</Label>
                   <Select
                     value={novoProduto.category}
                     onValueChange={(value) => setNovoProduto({ ...novoProduto, category: value })}
                   >
-                    <SelectTrigger className="col-span-3">
+                    <SelectTrigger>
                       <SelectValue placeholder="Selecione uma categoria" />
                     </SelectTrigger>
                     <SelectContent>
@@ -225,10 +219,9 @@ export function GestaoEstoque() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="basePrice" className="text-right">
-                    Preço Base
-                  </Label>
+
+                <div className="space-y-2">
+                  <Label htmlFor="basePrice">Preço Base</Label>
                   <Input
                     id="basePrice"
                     type="number"
@@ -237,28 +230,25 @@ export function GestaoEstoque() {
                     onChange={(e) =>
                       setNovoProduto({ ...novoProduto, basePrice: Number.parseFloat(e.target.value) || 0 })
                     }
-                    className="col-span-3"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="provider" className="text-right">
-                    Fornecedor
-                  </Label>
-                  <Input
-                    id="provider"
-                    value={novoProduto.provider}
-                    onChange={(e) => setNovoProduto({ ...novoProduto, provider: e.target.value })}
-                    className="col-span-3"
                     required
                   />
                 </div>
 
-                <div className="col-span-4">
+                <div className="space-y-2">
+                  <Label htmlFor="provider">Fornecedor</Label>
+                  <Input
+                    id="provider"
+                    value={novoProduto.provider}
+                    onChange={(e) => setNovoProduto({ ...novoProduto, provider: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-3">
                   <Label className="text-sm font-medium">Variações de Cores</Label>
-                  <div className="space-y-3 mt-2">
+                  <div className="space-y-3">
                     {novoProduto.variations.map((variation, index) => (
-                      <div key={variation.tempId} className="border rounded-lg p-3 space-y-2">
+                      <div key={variation.tempId} className="border rounded-lg p-3 space-y-3">
                         <div className="flex items-center justify-between">
                           <h4 className="text-sm font-medium">Variação {index + 1}</h4>
                           {novoProduto.variations.length > 1 && (
@@ -272,8 +262,9 @@ export function GestaoEstoque() {
                             </Button>
                           )}
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-2">
                             <Label htmlFor={`color-${index}`} className="text-xs">
                               Cor
                             </Label>
@@ -285,7 +276,7 @@ export function GestaoEstoque() {
                               required
                             />
                           </div>
-                          <div>
+                          <div className="space-y-2">
                             <Label htmlFor={`quantity-${index}`} className="text-xs">
                               Quantidade
                             </Label>
@@ -300,7 +291,8 @@ export function GestaoEstoque() {
                             />
                           </div>
                         </div>
-                        <div>
+
+                        <div className="space-y-2">
                           <Label htmlFor={`image-${index}`} className="text-xs">
                             Imagem (opcional)
                           </Label>
@@ -377,7 +369,7 @@ export function GestaoEstoque() {
       </div>
 
       {/* Cards de Resumo */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total de Produtos</CardTitle>
@@ -441,7 +433,7 @@ export function GestaoEstoque() {
               <CardTitle className="text-lg">Filtros</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <Label htmlFor="busca">Buscar produto</Label>
                   <div className="relative">
@@ -455,7 +447,7 @@ export function GestaoEstoque() {
                     />
                   </div>
                 </div>
-                <div className="w-48">
+                <div className="w-full sm:w-48">
                   <Label htmlFor="categoria">Categoria</Label>
                   <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
                     <SelectTrigger>
@@ -490,21 +482,23 @@ export function GestaoEstoque() {
 
                   return (
                     <Card key={produto.id} className="p-4">
-                      <div className="flex items-start justify-between mb-4">
+                      <div className="flex flex-col lg:flex-row lg:items-start justify-between mb-4 gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                             <h3 className="text-lg font-semibold">{produto.nome}</h3>
-                            <Badge variant="outline">{produto.categoria}</Badge>
-                            <Badge variant={status.variant}>{status.label}</Badge>
+                            <div className="flex flex-wrap gap-2">
+                              <Badge variant="outline">{produto.categoria}</Badge>
+                              <Badge variant={status.variant}>{status.label}</Badge>
+                            </div>
                           </div>
-                        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
                             <span>Fornecedor: {produto.fornecedor}</span>
                             <span>Preço: R$ {(produto.basePrice || 0).toFixed(2)}</span>
                             <span>Total: {totalQuantity} unidades</span>
                             <span>Valor: R$ {(getTotalValue(produto) || 0).toFixed(2)}</span>
+                          </div>
                         </div>
-                        </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <Button
                             variant="outline"
                             size="sm"
@@ -512,15 +506,29 @@ export function GestaoEstoque() {
                               setProdutoSelecionadoVariacao(produto.id)
                               setDialogVariacaoAberto(true)
                             }}
+                            className="text-xs sm:text-sm"
                           >
                             <Palette className="h-4 w-4 mr-1" />
-                            Nova Cor
+                            <span className="hidden sm:inline">Nova Cor</span>
+                            <span className="sm:hidden">Cor</span>
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => setProdutoSelecionado(produto.id)}>
-                            Ver Detalhes
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setProdutoSelecionado(produto.id)}
+                            className="text-xs sm:text-sm"
+                          >
+                            <span className="hidden sm:inline">Ver Detalhes</span>
+                            <span className="sm:hidden">Detalhes</span>
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => removerProduto(produto.id)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removerProduto(produto.id)}
+                            className="text-xs sm:text-sm"
+                          >
                             <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Remover</span>
                           </Button>
                         </div>
                       </div>
@@ -531,7 +539,7 @@ export function GestaoEstoque() {
                           <Palette className="h-4 w-4" />
                           Variações ({(produto.variations || []).length})
                         </h4>
-                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                           {(produto.variations || []).map((variation) => {
                             const variationStatus = getStatusEstoque(variation.quantidade)
                             return (
@@ -541,10 +549,10 @@ export function GestaoEstoque() {
                                     <div
                                       className="w-4 h-4 rounded-full border"
                                       // CORREÇÃO 3: Tratamento para 'variation.color' nulo
-                                      style={{ backgroundColor: (variation.cor || 'transparent').toLowerCase() }}
+                                      style={{ backgroundColor: (variation.cor || "transparent").toLowerCase() }}
                                       title={variation.cor}
                                     />
-                                    <span className="font-medium text-sm">{variation.cor || 'N/A'}</span>
+                                    <span className="font-medium text-sm">{variation.cor || "N/A"}</span>
                                   </div>
                                   <Badge variant={variationStatus.variant} className="text-xs">
                                     {variation.quantidade}
@@ -601,41 +609,43 @@ export function GestaoEstoque() {
             </CardHeader>
             <CardContent>
               {produtosBaixoEstoque.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produto</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead>Quantidade Total</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Fornecedor</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {produtosBaixoEstoque.map((produto) => {
-                      const totalQuantity = getTotalQuantity(produto)
-                      const status = getStatusEstoque(totalQuantity)
-                      return (
-                        <TableRow key={produto.id}>
-                          <TableCell className="font-medium">{produto.nome}</TableCell>
-                          <TableCell>{produto.categoria}</TableCell>
-                          <TableCell className="font-mono">{totalQuantity}</TableCell>
-                          <TableCell>
-                            <Badge variant={status.variant}>{status.label}</Badge>
-                          </TableCell>
-                          <TableCell>{produto.fornecedor}</TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="outline" size="sm" onClick={() => setProdutoSelecionado(produto.id)}>
-                              <Pencil className="h-4 w-4" />
-                              Gerenciar
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Produto</TableHead>
+                        <TableHead>Categoria</TableHead>
+                        <TableHead>Quantidade Total</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Fornecedor</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {produtosBaixoEstoque.map((produto) => {
+                        const totalQuantity = getTotalQuantity(produto)
+                        const status = getStatusEstoque(totalQuantity)
+                        return (
+                          <TableRow key={produto.id}>
+                            <TableCell className="font-medium">{produto.nome}</TableCell>
+                            <TableCell>{produto.categoria}</TableCell>
+                            <TableCell className="font-mono">{totalQuantity}</TableCell>
+                            <TableCell>
+                              <Badge variant={status.variant}>{status.label}</Badge>
+                            </TableCell>
+                            <TableCell>{produto.fornecedor}</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="outline" size="sm" onClick={() => setProdutoSelecionado(produto.id)}>
+                                <Pencil className="h-4 w-4" />
+                                Gerenciar
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
                 <div className="text-center py-8">
                   <Package className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -658,30 +668,30 @@ export function GestaoEstoque() {
             </CardHeader>
             <CardContent>
               {produtosSemEstoque.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produto</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead>Preço</TableHead>
-                      <TableHead>Fornecedor</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                <TableBody>
-                    {produtosSemEstoque.map((produto) => (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Produto</TableHead>
+                        <TableHead>Categoria</TableHead>
+                        <TableHead>Preço</TableHead>
+                        <TableHead>Fornecedor</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {produtosSemEstoque.map((produto) => (
                         <TableRow key={produto.id}>
-                            <TableCell className="font-medium">{produto.nome}</TableCell>
-                            <TableCell>{produto.categoria}</TableCell>
-                            <TableCell>R$ {(produto.basePrice || 0).toFixed(2)}</TableCell>
-                            <TableCell>{produto.fornecedor}</TableCell>
-                            <TableCell className="text-right">
-                                {/* ... */}
-                            </TableCell>
+                          <TableCell className="font-medium">{produto.nome}</TableCell>
+                          <TableCell>{produto.categoria}</TableCell>
+                          <TableCell>R$ {(produto.basePrice || 0).toFixed(2)}</TableCell>
+                          <TableCell>{produto.fornecedor}</TableCell>
+                          <TableCell className="text-right">{/* ... */}</TableCell>
                         </TableRow>
-                    ))}
-                </TableBody>
-                </Table>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
                 <div className="text-center py-8">
                   <Package className="mx-auto h-12 w-12 text-green-500" />
