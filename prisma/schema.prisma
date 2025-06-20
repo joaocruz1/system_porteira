@@ -25,7 +25,7 @@ model ProdutoVariante {
   cor          String
   quantidade   Int
   image        String? // No Prisma é 'image', no DB também é 'image'
-  sku          String
+  sku          String?
   productId   String
 
   produto Produto @relation(fields: [productId], references: [id])

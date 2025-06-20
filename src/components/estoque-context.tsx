@@ -15,7 +15,7 @@ export interface Produto {
   id: string
   nome: string
   quantidade: number
-  categoria : string
+  categoria: string
   preco: string
   basePrice: number
   fornecedor: string
@@ -104,6 +104,7 @@ interface EstoqueContextType {
   atualizarStatusPedido: (id: string, status: Pedido["status"]) => Promise<void>
   darBaixaPedido: (pedidoId: string) => Promise<void>
   refreshData: () => void
+  recarregarPedidos: () => Promise<void>
   adicionarPerda: (perda: Omit<Perda, "id">) => Promise<void>
   removerPerda: (id: string) => Promise<void>
   atualizarPerda: (id: string, perda: Partial<Perda>) => Promise<void>
@@ -237,6 +238,70 @@ export function EstoqueProvider({
     console.log("CTX: refreshData -> Buscando todos os dados da API...")
     fetchData()
   }, [fetchData])
+
+  const recarregarPedidos = useCallback(async () => {
+    try {
+      console.log("CTX: Recarregando apenas pedidos...")
+      const pedidosResponse = await fetch(`${API_BASE_URL}/pedido`)
+
+      if (!pedidosResponse.ok) throw new Error("Falha ao buscar pedidos")
+
+      const rawPedidosFromApi = await pedidosResponse.json()
+      if (!Array.isArray(rawPedidosFromApi)) throw new Error("Resposta de pedidos não é um array.")
+
+      const mappedPedidos: Pedido[] = rawPedidosFromApi.map((apiPedido: any) => {
+        let clienteNome = "N/A"
+        let clienteEndereco = "N/A"
+        let clienteTelefone = "N/A"
+        let clienteEmail = "N/A"
+
+        if (apiPedido.cliente_infos && typeof apiPedido.cliente_infos === "object") {
+          clienteNome = apiPedido.cliente_infos.name || "Nome não informado"
+          clienteEndereco = apiPedido.cliente_infos.address || "Endereço não informado"
+          clienteTelefone = apiPedido.cliente_infos.phone || "Telefone não informado"
+          clienteEmail = apiPedido.cliente_infos.email || "Email não informado"
+        }
+
+        let produtosPedido: Pedido["produtos"] = []
+        if (Array.isArray(apiPedido.item)) {
+          produtosPedido = apiPedido.item.map((orderItem: any) => ({
+            produtoId: orderItem.product?.id || orderItem.custom?.id || "N/A",
+            variationId: orderItem.variationId,
+            nome: orderItem.product?.name || orderItem.custom?.productName || "Produto Desconhecido",
+            cor: orderItem.color,
+            quantidade: orderItem.quantity || 0,
+            logotype: orderItem.logoType || "text",
+            preco: orderItem.unitPrice || 0,
+          }))
+        }
+
+        let statusPedido: Pedido["status"] = "pendente"
+        const validStatuses: Pedido["status"][] = ["pendente", "processando", "concluido", "cancelado"]
+        if (typeof apiPedido.status === "string" && validStatuses.includes(apiPedido.status)) {
+          statusPedido = apiPedido.status
+        }
+
+        return {
+          id: apiPedido.id,
+          cliente: clienteNome,
+          endereco: clienteEndereco,
+          cliente_telefone: clienteTelefone,
+          cliente_email: clienteEmail,
+          logo: apiPedido.logo || "",
+          produtos: produtosPedido,
+          total: Number(apiPedido.total) || 0,
+          status: statusPedido,
+          dataPedido: apiPedido.data_pedido ? new Date(apiPedido.data_pedido).toISOString() : new Date().toISOString(),
+        }
+      })
+
+      setPedidos(mappedPedidos)
+      console.log("CTX: Pedidos recarregados com sucesso:", mappedPedidos.length)
+    } catch (err) {
+      console.error("CTX Error ao recarregar pedidos:", err)
+      setError(err instanceof Error ? err.message : "Erro desconhecido ao recarregar pedidos")
+    }
+  }, [])
 
   const adicionarProduto = async (produtoData: {
     name: string
@@ -695,6 +760,7 @@ export function EstoqueProvider({
         atualizarCusto,
         marcarCustoPago,
         refreshData,
+        recarregarPedidos,
       }}
     >
       {children}

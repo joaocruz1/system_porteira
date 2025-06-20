@@ -1,108 +1,106 @@
 // src/app/api/produto/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { put } from '@vercel/blob'; // 1. Importar a função put do Vercel Blob
-
-// Remover as importações relacionadas ao sistema de arquivos local, se não forem mais usadas em outras partes do arquivo.
-// import path from 'path';
-// import { writeFile, stat, mkdir } from 'fs/promises';
+import { put } from '@vercel/blob';
 
 interface ErrorResponse {
   error: string;
   details?: string;
 }
 
-// 2. Remover ou comentar a função ensureUploadDirExists, pois não será mais necessária para imagens de produtos.
-/*
-async function ensureUploadDirExists() {
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'produtos');
-  try {
-    await stat(uploadDir);
-  } catch (e: any) {
-    if (e.code === 'ENOENT') {
-      console.log(`Criando diretório de uploads: ${uploadDir}`);
-      await mkdir(uploadDir, { recursive: true });
-    } else {
-      console.error("Erro ao verificar/criar diretório de uploads:", e);
-      throw e; 
-    }
-  }
-  return uploadDir;
-}
-*/
-
 export async function POST(request: NextRequest) {
-  console.log("====== [APP ROUTER - POST /api/produto] Adicionando produto ======");
+  console.log("====== [APP ROUTER - POST /api/produto] Adicionando produto e variações ======");
   try {
     const formData = await request.formData();
 
-    const nome = formData.get('nome') as string | null;
-    const categoria = formData.get('categoria') as string | null;
-    const quantidadeStr = formData.get('quantidade') as string | null;
-    const precoStr = formData.get('preco') as string | null;
-    const fornecedor = formData.get('fornecedor') as string | null;
-    const imageFile = formData.get('imageFile') as File | null; 
+    // 1. Extrair dados do formulário
+    const name = formData.get('name') as string | null;
+    const category = formData.get('category') as string | null;
+    const basePriceStr = formData.get('basePrice') as string | null;
+    const provider = formData.get('provider') as string | null;
+    const variationsStr = formData.get('variations') as string | null;
+
+    // 2. Validação básica
+    if (!name || !basePriceStr || !variationsStr) {
+      return NextResponse.json<ErrorResponse>({ error: 'Campos obrigatórios (nome, preço base, variações) não foram preenchidos.' }, { status: 400 });
+    }
+
+    const basePrice = parseFloat(basePriceStr);
+    if (isNaN(basePrice)) {
+      return NextResponse.json<ErrorResponse>({ error: '"basePrice" deve ser um número válido.' }, { status: 400 });
+    }
+
+    const variations: Array<{ color: string; quantity: number }> = JSON.parse(variationsStr);
+    if (!Array.isArray(variations) || variations.length === 0) {
+      return NextResponse.json<ErrorResponse>({ error: 'Pelo menos uma variação é necessária.' }, { status: 400 });
+    }
     
-    console.log("[API POST /produto] Conteúdo do formData para imageFile:", imageFile ? imageFile.name : "Nenhum arquivo recebido como imageFile");
+    // 3. Calcular a quantidade total para o produto principal
+    const totalQuantity = variations.reduce((acc, v) => acc + (v.quantity || 0), 0);
 
-    if (!nome) {
-      return NextResponse.json<ErrorResponse>({ error: 'Campo "nome" é obrigatório.' }, { status: 400 });
-    }
+    // 4. Usar uma transação para garantir a integridade dos dados
+    const novoProdutoComVariacoes = await prisma.$transaction(async (tx) => {
+      // 4.1. Criar o produto principal
+      const produtoPrincipal = await tx.produto.create({
+        data: {
+          nome: name,
+          categoria: category,
+          preco: basePrice, // O campo 'preco' no DB recebe o 'basePrice'
+          quantidade: totalQuantity, // A quantidade total é a soma das variações
+          fornecedor: provider,
+          data_entrada: new Date(),
+          image: null, // A imagem principal do produto pode ser a da primeira variação ou nula
+        },
+      });
 
-    const quantidade = quantidadeStr ? parseInt(quantidadeStr, 10) : 0;
-    const preco = precoStr ? parseFloat(precoStr) : 0.0;
+      console.log("[DB TX] Produto principal criado:", produtoPrincipal.id);
 
-    if (isNaN(quantidade)) {
-        return NextResponse.json<ErrorResponse>({ error: '"quantidade" deve ser um número válido.' }, { status: 400 });
-    }
-    if (isNaN(preco)) {
-        return NextResponse.json<ErrorResponse>({ error: '"preco" deve ser um número válido.' }, { status: 400 });
-    }
-    
-    let imageUrlInBlob: string | null = null; // Para armazenar a URL do Blob
+      // 4.2. Iterar e criar cada variação
+      const variacoesCriadas = [];
+      for (let i = 0; i < variations.length; i++) {
+        const variationData = variations[i];
+        const imageFile = formData.get(`variation_image_${i}`) as File | null;
+        let imageUrlInBlob: string | null = null;
 
-    if (imageFile) {
-      console.log("[API POST /produto] Processando arquivo de imagem para o Vercel Blob:", imageFile.name);
-      
-      // 3. Fazer o upload para o Vercel Blob
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      const safeFilename = imageFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      // Adicionar um prefixo de pasta específico para produtos, ex: 'produtos/'
-      const blobFilename = `produtos/${uniqueSuffix}_${safeFilename}`; 
+        // Fazer upload da imagem da variação, se existir
+        if (imageFile) {
+          const blobFilename = `produtos/${produtoPrincipal.id}-${i}_${imageFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+          const blob = await put(blobFilename, imageFile, { access: 'public' });
+          imageUrlInBlob = blob.url;
+          console.log(`[DB TX] Imagem da variação ${i} salva no Blob: ${imageUrlInBlob}`);
 
-      try {
-        const blob = await put(blobFilename, imageFile, {
-          access: 'public', // Torna o arquivo publicamente acessível
-          // contentType: imageFile.type, // Opcional, o Vercel Blob geralmente infere isso
+          // Se for a primeira imagem, atualiza a imagem principal do produto
+          if (i === 0) {
+            await tx.produto.update({
+              where: { id: produtoPrincipal.id },
+              data: { image: imageUrlInBlob },
+            });
+          }
+        }
+
+        // Criar o registro da variação no banco
+        const novaVariacao = await tx.produtoVariante.create({
+          data: {
+            productId: produtoPrincipal.id, // Link com o produto principal
+            cor: variationData.color,
+            quantidade: variationData.quantity,
+            image: imageUrlInBlob,
+          },
         });
-        imageUrlInBlob = blob.url; // Armazena a URL retornada pelo Vercel Blob
-        console.log(`[API POST /produto] Arquivo de imagem salvo no Vercel Blob: ${imageUrlInBlob}`);
-      } catch (uploadError) {
-        console.error("Erro ao fazer upload da imagem do produto para o Vercel Blob:", uploadError);
-        return NextResponse.json<ErrorResponse>({ error: "Falha ao fazer upload da imagem do produto." }, { status: 500 });
+        variacoesCriadas.push(novaVariacao);
       }
-    } else {
-      console.log("[API POST /produto] Nenhum arquivo de imagem (imageFile) foi recebido ou processado.");
-    }
-
-    const novoProdutoData: any = {
-      nome,
-      categoria: categoria || undefined,
-      quantidade,
-      preco,
-      fornecedor: fornecedor || undefined,
-      // data_entrada: new Date(), // Descomente se precisar definir a data de entrada aqui
-      image: imageUrlInBlob, // 4. Salvar a URL do Blob no banco de dados (ou null se não houver imagem)
-    };
-
-    const novoProduto = await prisma.produto.create({
-      data: novoProdutoData,
+      
+      console.log("[DB TX] Variações criadas:", variacoesCriadas.length);
+      
+      // Retornar o produto completo com suas variações
+      return { ...produtoPrincipal, variacoes: variacoesCriadas };
     });
 
-    return NextResponse.json(novoProduto, { status: 201 });
+    return NextResponse.json(novoProdutoComVariacoes, { status: 201 });
 
   } catch (error: unknown) {
-    console.error('[API POST /produto] Erro ao adicionar produto:', error);
+    console.error('[API POST /produto] Erro ao adicionar produto e variações:', error);
     let errorMessage = 'Erro desconhecido ao adicionar produto.';
     if (error instanceof Error) {
       errorMessage = error.message;
@@ -114,31 +112,32 @@ export async function POST(request: NextRequest) {
   }
 }
 
+
 export async function GET(request: NextRequest) {
   console.log("====== [APP ROUTER - GET /api/produto] Buscando produtos ======");
   try {
     const produtosDoBanco = await prisma.produto.findMany({
-      include: { 
+      include: {
         variacoes: true, // Mantemos a busca com o nome correto do schema
-       },
-      orderBy: [ 
+      },
+      orderBy: [
         { id: "desc" },
         { nome: "asc" },
         { categoria: "asc" },
         { quantidade: "asc" },
         { preco: "asc" },
-        { data_entrada: "asc" }, 
-        { image: "asc" }      
+        { data_entrada: "asc" },
+        { image: "asc" }
       ],
     });
 
     // ✨ SOLUÇÃO: Mapeia o resultado para a estrutura esperada pelo frontend
     const produtosParaFrontend = produtosDoBanco.map(produto => {
-        const { variacoes, ...restoDoProduto } = produto;
-        return {
-            ...restoDoProduto,
-            variations: variacoes || [] // Renomeia 'variacoes' para 'variations' e garante que seja um array
-        };
+      const { variacoes, ...restoDoProduto } = produto;
+      return {
+        ...restoDoProduto,
+        variations: variacoes || [] // Renomeia 'variacoes' para 'variations' e garante que seja um array
+      };
     });
 
     return NextResponse.json(produtosParaFrontend, { status: 200 });
@@ -146,9 +145,9 @@ export async function GET(request: NextRequest) {
     console.error('[API GET /produto] Erro ao buscar produtos:', error);
     let errorMessage = 'Erro desconhecido ao buscar produtos.';
     if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
-        errorMessage = error.message; 
+      errorMessage = error.message;
     } else if (error instanceof Error) {
-        errorMessage = error.message;
+      errorMessage = error.message;
     }
     return NextResponse.json<ErrorResponse>(
       { error: 'Falha ao buscar produtos do banco de dados.', details: errorMessage },
