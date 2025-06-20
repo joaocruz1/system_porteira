@@ -34,7 +34,7 @@ model ProdutoVariante {
   id           String    @id @default(uuid())
   cor          String
   quantidade   String
-  image        String? 
+  image        String? // No Prisma é 'image', no DB também é 'image'
   sku          String
   productId   String
 }
