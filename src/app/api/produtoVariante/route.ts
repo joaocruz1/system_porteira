@@ -1,15 +1,12 @@
 // src/app/api/produtoVariante/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { put } from '@vercel/blob'; // 1. Importar a função put do Vercel Blob
+import { put } from '@vercel/blob';
 
 interface ErrorResponse {
     error: string;
     details?: string;
 }
-
-// 2. Remover ou comentar a função ensureUploadDirExists, pois não será mais necessária para imagens de produtos.
-
 
 export async function POST(request: NextRequest) {
     console.log("====== [APP ROUTER - POST /api/produtoVariante] Adicionando variação de produto ======");
@@ -22,61 +19,77 @@ export async function POST(request: NextRequest) {
         const sku = formData.get('sku') as string | null;
         const imageFile = formData.get('image') as File | null;
 
-        console.log("[API POST /produtoVariante] Conteúdo do formData para imageFile:", imageFile ? imageFile.name : "Nenhum arquivo recebido como imageFile");
-
+        // --- VALIDAÇÃO ADICIONADA AQUI ---
         if (!productId) {
             return NextResponse.json<ErrorResponse>({ error: 'Campo "productId" é obrigatório.' }, { status: 400 });
         }
+        // Garante que o campo 'cor' não seja nulo ou vazio
+        if (!cor || cor.trim() === '') {
+            return NextResponse.json<ErrorResponse>({ error: 'Campo "cor" é obrigatório e não pode ser vazio.' }, { status: 400 });
+        }
+        // --- FIM DA VALIDAÇÃO ---
 
         const quantidade = quantidadeStr ? parseInt(quantidadeStr, 10) : 0;
-
         if (isNaN(quantidade)) {
             return NextResponse.json<ErrorResponse>({ error: '"quantidade" deve ser um número válido.' }, { status: 400 });
         }
 
-        let imageUrlInBlob: string | null = null; // Para armazenar a URL do Blob
+        let imageUrlInBlob: string | null = null;
 
         if (imageFile) {
-            console.log("[API POST /produtoVariante] Processando arquivo de imagem para o Vercel Blob:", imageFile.name);
-
-            // 3. Fazer o upload para o Vercel Blob
             const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
             const safeFilename = imageFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-            // Adicionar um prefixo de pasta específico para produtos, ex: 'produtos/'
             const blobFilename = `produtos/${uniqueSuffix}_${safeFilename}`;
-
             try {
-                const blob = await put(blobFilename, imageFile, {
-                    access: 'public', // Torna o arquivo publicamente acessível
-                    // contentType: imageFile.type, // Opcional, o Vercel Blob geralmente infere isso
-                });
-                imageUrlInBlob = blob.url; // Armazena a URL retornada pelo Vercel Blob
-                console.log(`[API POST /perdas] Arquivo de imagem salvo no Vercel Blob: ${imageUrlInBlob}`);
+                const blob = await put(blobFilename, imageFile, { access: 'public' });
+                imageUrlInBlob = blob.url;
             } catch (uploadError) {
-                console.error("Erro ao fazer upload da imagem do produto para o Vercel Blob:", uploadError);
-                return NextResponse.json<ErrorResponse>({ error: "Falha ao fazer upload da imagem do produto." }, { status: 500 });
+                console.error("Erro ao fazer upload da imagem para o Vercel Blob:", uploadError);
+                return NextResponse.json<ErrorResponse>({ error: "Falha ao fazer upload da imagem." }, { status: 500 });
             }
-        } else {
-            console.log("[API POST /perdas] Nenhum arquivo de imagem (imageFile) foi recebido ou processado.");
         }
 
-        const novoProdutoVarianteData: any = {
-            productId,
-            cor,
-            quantidade,
-            sku,
+        const novoProdutoVarianteData = {
+            cor: cor,
+            quantidade: quantidade,
+            sku: sku,
             image: imageUrlInBlob,
+            produto: {
+                connect: {
+                    id: productId,
+                },
+            },
         };
 
         const novoProdutoVariante = await prisma.produtoVariante.create({
             data: novoProdutoVarianteData,
         });
 
+        // Após criar a variação, precisamos recalcular e atualizar a quantidade total do produto pai
+        const totalVariacoes = await prisma.produtoVariante.aggregate({
+            _sum: {
+                quantidade: true,
+            },
+            where: {
+                productId: productId,
+            },
+        });
+
+        await prisma.produto.update({
+            where: {
+                id: productId,
+            },
+            data: {
+                quantidade: totalVariacoes._sum.quantidade || 0,
+            },
+        });
+
+
         return NextResponse.json(novoProdutoVariante, { status: 201 });
 
     } catch (error: unknown) {
-        console.error('[API POST /produtoVariante] Erro ao adicionar produto:', error);
-        let errorMessage = 'Erro desconhecido ao adicionar viriação de produto.';
+        console.error('[API POST /produtoVariante] Erro ao adicionar variação de produto:', error);
+        let errorMessage = 'Erro desconhecido ao adicionar variação de produto.';
         if (error instanceof Error) {
             errorMessage = error.message;
         }
@@ -88,9 +101,9 @@ export async function POST(request: NextRequest) {
 }
 
 
-//Este get está pronto para retornar apenas visualização variação de produtos anteriores, para puxar produt
+// O restante do arquivo (GET e config) permanece o mesmo...
 export async function GET(request: NextRequest) {
-    console.log("====== [APP ROUTER - GET /api/produtoVariante] Buscando vaciação de produtos ======");
+    console.log("====== [APP ROUTER - GET /api/produtoVariante] Buscando variação de produtos ======");
     try {
         const perdas = await prisma.produtoVariante.findMany({
             orderBy: [
@@ -117,3 +130,12 @@ export async function GET(request: NextRequest) {
         );
     }
 }
+
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '5mb',
+    },
+  },
+};

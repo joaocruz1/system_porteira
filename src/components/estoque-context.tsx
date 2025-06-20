@@ -394,7 +394,7 @@ export function EstoqueProvider({
   const atualizarQuantidadeVariacao = async (variationId: string, quantidade: number) => {
     setIsLoading(true)
     try {
-      const apiUrl = `${API_BASE_URL}/product-variation/${variationId}`
+      const apiUrl = `${API_BASE_URL}/produtoVariante/${variationId}`
       const response = await fetch(apiUrl, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -433,7 +433,7 @@ export function EstoqueProvider({
         formData.append("image", variation.image)
       }
 
-      const response = await fetch(`${API_BASE_URL}/product-variation`, {
+      const response = await fetch(`${API_BASE_URL}/produtoVariante`, {
         method: "POST",
         body: formData,
       })
