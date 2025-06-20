@@ -427,8 +427,8 @@ export function EstoqueProvider({
     try {
       const formData = new FormData()
       formData.append("productId", productId)
-      formData.append("color", variation.color)
-      formData.append("quantity", variation.quantity.toString())
+      formData.append("cor", variation.color)
+      formData.append("quantidade", variation.quantity.toString())
       if (variation.image) {
         formData.append("image", variation.image)
       }
@@ -456,7 +456,7 @@ export function EstoqueProvider({
   const removerVariacao = async (variationId: string) => {
     setIsLoading(true)
     try {
-      const response = await fetch(`${API_BASE_URL}/product-variation/${variationId}`, {
+      const response = await fetch(`${API_BASE_URL}/produtoVariante/${variationId}`, {
         method: "DELETE",
       })
 
