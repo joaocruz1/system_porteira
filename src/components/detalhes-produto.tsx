@@ -51,6 +51,10 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
     )
   }
 
+  // CORREÇÃO 1: Normaliza o preço para garantir que sempre seja um número.
+  // Isso resolve o erro 'toFixed' se 'basePrice' for nulo ou indefinido.
+  const basePrice = Number(produto.basePrice || produto.preco || 0);
+
   // Calcular estatísticas do produto
   const pedidosComProduto = pedidos.filter((pedido) => pedido.produtos.some((p) => p.produtoId === produto.id))
 
@@ -61,11 +65,16 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
 
   const receitaTotal = pedidosComProduto.reduce((acc, pedido) => {
     const produtoNoPedido = pedido.produtos.find((p) => p.produtoId === produto.id)
-    return acc + (produtoNoPedido?.quantidade || 0) * (produtoNoPedido?.preco || produto.basePrice)
+    // CORREÇÃO 2: Usa a variável de preço segura que criamos.
+    const precoItem = produtoNoPedido?.preco || basePrice;
+    return acc + (produtoNoPedido?.quantidade || 0) * precoItem;
   }, 0)
 
-  const totalQuantity = produto.variations.reduce((total, variation) => total + variation.quantity, 0)
-  const totalValue = totalQuantity * produto.basePrice
+  // CORREÇÃO 3: Garante que 'variations' seja um array antes de usar 'reduce'.
+  const totalQuantity = Array.isArray(produto.variations) ? produto.variations.reduce((total, variation) => total + (variation.quantidade || 0), 0) : 0;
+  
+  // CORREÇÃO 4: Usa a variável de preço segura.
+  const totalValue = totalQuantity * basePrice;
 
   const getStatusEstoque = (quantidade: number) => {
     if (quantidade === 0) return { label: "Sem estoque", variant: "destructive" as const, color: "text-red-600" }
@@ -85,7 +94,7 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
   }
 
   const iniciarEdicaoQuantidade = (variation: ProductVariante) => {
-    setNovaQuantidade(variation.quantity)
+    setNovaQuantidade(variation.quantidade)
     setEditandoVariacao(variation.id)
   }
 
@@ -161,7 +170,7 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Variações</p>
-              <p className="font-semibold">{produto.variations.length} cores</p>
+              <p className="font-semibold">{(produto.variations || []).length} cores</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Status</p>
@@ -181,7 +190,7 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
           <CardContent className="space-y-4">
             <div>
               <p className="text-sm text-muted-foreground">Preço Base</p>
-              <p className="text-2xl font-bold text-green-600">R$ {produto.basePrice.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-green-600">R$ {basePrice.toFixed(2)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Valor Total em Estoque</p>
@@ -220,14 +229,14 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Palette className="h-5 w-5" />
-            Variações de Cores ({produto.variations.length})
+            Variações de Cores ({(produto.variations || []).length})
           </CardTitle>
           <CardDescription>Gerencie o estoque de cada cor individualmente</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {produto.variations.map((variation) => {
-              const variationStatus = getStatusEstoque(variation.quantity)
+            {(produto.variations || []).map((variation) => {
+              const variationStatus = getStatusEstoque(variation.quantidade)
               return (
                 <Card key={variation.id} className="p-4">
                   <div className="space-y-3">
@@ -235,10 +244,10 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
                       <div className="flex items-center gap-2">
                         <div
                           className="w-6 h-6 rounded-full border-2"
-                          style={{ backgroundColor: variation.color.toLowerCase() }}
-                          title={variation.color}
+                          style={{ backgroundColor: (variation.cor || 'transparent').toLowerCase() }}
+                          title={variation.cor}
                         />
-                        <span className="font-medium">{variation.color}</span>
+                        <span className="font-medium">{variation.cor}</span>
                       </div>
                       <Badge variant={variationStatus.variant} className="text-xs">
                         {variationStatus.label}
@@ -249,7 +258,7 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
                       <div className="w-full h-32 bg-gray-100 rounded overflow-hidden">
                         <img
                           src={variation.image || "/placeholder.svg"}
-                          alt={`${produto.nome} - ${variation.color}`}
+                          alt={`${produto.nome} - ${variation.cor}`}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -280,7 +289,7 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
                         </div>
                       ) : (
                         <div className="flex items-center justify-between">
-                          <span className={`text-xl font-bold ${variationStatus.color}`}>{variation.quantity}</span>
+                          <span className={`text-xl font-bold ${variationStatus.color}`}>{variation.cor}</span>
                           <div className="flex gap-1">
                             <Button size="sm" variant="outline" onClick={() => iniciarEdicaoQuantidade(variation)}>
                               <Edit className="h-3 w-3" />
@@ -339,7 +348,7 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
                           <div className="flex items-center gap-2">
                             <div
                               className="w-4 h-4 rounded-full border"
-                              style={{ backgroundColor: produtoNoPedido.cor.toLowerCase() }}
+                              style={{ backgroundColor: (produtoNoPedido.cor || 'transparent').toLowerCase() }}
                             />
                             {produtoNoPedido.cor}
                           </div>
@@ -352,7 +361,7 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
                           {produtoNoPedido.quantidade}x
                         </Badge>
                       </TableCell>
-                      <TableCell>R$ {produtoNoPedido.preco.toFixed(2)}</TableCell>
+                      <TableCell>R$ {(produtoNoPedido.preco || 0).toFixed(2)}</TableCell>
                       <TableCell>
                         <Badge
                           variant={
@@ -369,7 +378,7 @@ export function DetalhesProduto({ produtoId, onVoltar }: DetalhesProdutoProps) {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-semibold">
-                        R$ {(produtoNoPedido.quantidade * produtoNoPedido.preco).toFixed(2)}
+                        R$ {((produtoNoPedido.quantidade || 0) * (produtoNoPedido.preco || 0)).toFixed(2)}
                       </TableCell>
                     </TableRow>
                   )

@@ -40,7 +40,6 @@ export function GestaoEstoque() {
   const [filtroCategoria, setFiltroCategoria] = useState("todas")
   const [busca, setBusca] = useState("")
 
-  // --- CORREÇÃO 1: Adicionar um ID temporário (`tempId`) ao estado das variações ---
   const [novoProduto, setNovoProduto] = useState({
     name: "",
     description: "",
@@ -58,28 +57,35 @@ export function GestaoEstoque() {
 
   const [produtoSelecionado, setProdutoSelecionado] = useState<string | null>(null)
 
-  // Calcular totais considerando todas as variações
   const getTotalQuantity = (produto: Produto) => {
     if (!produto || !Array.isArray(produto.variations)) {
       return 0
     }
-    return produto.variations.reduce((total, variation) => total + (variation.quantity || 0), 0)
+    return produto.variations.reduce((total, variation) => total + (variation.quantidade || 0), 0)
   }
 
   const getTotalValue = (produto: Produto) => {
-    return getTotalQuantity(produto) * produto.basePrice
+    // CORREÇÃO PREVENTIVA: Garante que basePrice seja um número antes de multiplicar
+    const basePrice = typeof produto.basePrice === 'number' ? produto.basePrice : 0;
+    return getTotalQuantity(produto) * basePrice
   }
 
   const produtosFiltrados = produtos.filter((produto) => {
-    const matchCategoria = filtroCategoria === "todas" || produto.categoria === filtroCategoria
+    // Adicionado para segurança, caso um 'produto' inteiro seja nulo no array
+    if (!produto) return false;
+    
+    const matchCategoria = filtroCategoria === "todas" || produto.categoria === filtroCategoria;
+    
+    // CORREÇÃO 1: Tratamento robusto para valores nulos/indefinidos em nome e fornecedor
     const matchBusca =
-      (produto.nome?.toLowerCase().includes(busca.toLowerCase()) ||
-      produto.fornecedor?.toLowerCase().includes(busca.toLowerCase())) ?? false
-    return matchCategoria && matchBusca
-  })
+      (produto.nome || '').toLowerCase().includes(busca.toLowerCase()) ||
+      (produto.fornecedor || '').toLowerCase().includes(busca.toLowerCase());
 
-  const produtosBaixoEstoque = produtos.filter((p) => getTotalQuantity(p) < 20)
-  const produtosSemEstoque = produtos.filter((p) => getTotalQuantity(p) === 0)
+    return matchCategoria && matchBusca;
+  });
+
+  const produtosBaixoEstoque = produtos.filter((p) => p && getTotalQuantity(p) < 20)
+  const produtosSemEstoque = produtos.filter((p) => p && getTotalQuantity(p) === 0)
 
   if (!permissions.canManageStock) {
     return (
@@ -92,7 +98,8 @@ export function GestaoEstoque() {
     )
   }
 
-  const categorias = ["todas", ...Array.from(new Set(produtos.map((p) => p.categoria)))]
+  // CORREÇÃO 2: Tratamento para categorias nulas/indefinidas ao criar a lista de filtros
+  const categorias = ["todas", ...Array.from(new Set(produtos.map((p) => p.categoria).filter(Boolean)))]
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -126,7 +133,6 @@ export function GestaoEstoque() {
     return { label: "Alto", variant: "default" as const }
   }
 
-  // --- CORREÇÃO 2: Garantir que a nova variação também tenha um `tempId` ---
   const adicionarNovaVariacao = () => {
     setNovoProduto((prev) => ({
       ...prev,
@@ -134,7 +140,6 @@ export function GestaoEstoque() {
     }))
   }
 
-  // --- CORREÇÃO 3: Remover a variação pelo `tempId` ao invés do `index` ---
   const removerVariacaoNova = (tempId: number) => {
     setNovoProduto((prev) => ({
       ...prev,
@@ -252,7 +257,6 @@ export function GestaoEstoque() {
                 <div className="col-span-4">
                   <Label className="text-sm font-medium">Variações de Cores</Label>
                   <div className="space-y-3 mt-2">
-                    {/* --- CORREÇÃO 4: Usar o `tempId` como `key` e na função de remover --- */}
                     {novoProduto.variations.map((variation, index) => (
                       <div key={variation.tempId} className="border rounded-lg p-3 space-y-2">
                         <div className="flex items-center justify-between">
@@ -382,7 +386,7 @@ export function GestaoEstoque() {
           <CardContent>
             <div className="text-2xl font-bold">{produtos.length}</div>
             <p className="text-xs text-muted-foreground">
-              {produtos.reduce((acc, p) => acc + getTotalQuantity(p), 0)} itens em estoque
+              {produtos.reduce((acc, p) => acc + (p ? getTotalQuantity(p) : 0), 0)} itens em estoque
             </p>
           </CardContent>
         </Card>
@@ -416,7 +420,7 @@ export function GestaoEstoque() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              R$ {produtos.reduce((acc, p) => acc + getTotalValue(p), 0).toFixed(2)}
+              R$ {produtos.reduce((acc, p) => acc + (p ? getTotalValue(p) : 0), 0).toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground">Valor em estoque</p>
           </CardContent>
@@ -525,31 +529,32 @@ export function GestaoEstoque() {
                       <div className="border-t pt-4">
                         <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                           <Palette className="h-4 w-4" />
-                          Variações ({produto.variations.length})
+                          Variações ({(produto.variations || []).length})
                         </h4>
                         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                          {produto.variations.map((variation) => {
-                            const variationStatus = getStatusEstoque(variation.quantity)
+                          {(produto.variations || []).map((variation) => {
+                            const variationStatus = getStatusEstoque(variation.quantidade)
                             return (
                               <div key={variation.id} className="border rounded-lg p-3 space-y-2">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2">
                                     <div
                                       className="w-4 h-4 rounded-full border"
-                                      style={{ backgroundColor: variation.color.toLowerCase() }}
-                                      title={variation.color}
+                                      // CORREÇÃO 3: Tratamento para 'variation.color' nulo
+                                      style={{ backgroundColor: (variation.cor || 'transparent').toLowerCase() }}
+                                      title={variation.cor}
                                     />
-                                    <span className="font-medium text-sm">{variation.color}</span>
+                                    <span className="font-medium text-sm">{variation.cor || 'N/A'}</span>
                                   </div>
                                   <Badge variant={variationStatus.variant} className="text-xs">
-                                    {variation.quantity}
+                                    {variation.quantidade}
                                   </Badge>
                                 </div>
                                 {variation.image && (
                                   <div className="w-full h-20 bg-gray-100 rounded overflow-hidden">
                                     <img
                                       src={variation.image || "/placeholder.svg"}
-                                      alt={`${produto.nome} - ${variation.color}`}
+                                      alt={`${produto.nome} - ${variation.cor}`}
                                       className="w-full h-full object-cover"
                                     />
                                   </div>
@@ -557,7 +562,7 @@ export function GestaoEstoque() {
                                 <div className="flex gap-1">
                                   <Input
                                     type="number"
-                                    value={variation.quantity}
+                                    value={variation.quantidade}
                                     onChange={(e) =>
                                       atualizarQuantidadeVariacao(variation.id, Number.parseInt(e.target.value) || 0)
                                     }

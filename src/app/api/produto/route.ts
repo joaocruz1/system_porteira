@@ -117,9 +117,9 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   console.log("====== [APP ROUTER - GET /api/produto] Buscando produtos ======");
   try {
-    const produtos = await prisma.produto.findMany({
+    const produtosDoBanco = await prisma.produto.findMany({
       include: { 
-        variacoes: true,
+        variacoes: true, // Mantemos a busca com o nome correto do schema
        },
       orderBy: [ 
         { id: "desc" },
@@ -131,7 +131,17 @@ export async function GET(request: NextRequest) {
         { image: "asc" }      
       ],
     });
-    return NextResponse.json(produtos, { status: 200 });
+
+    // ✨ SOLUÇÃO: Mapeia o resultado para a estrutura esperada pelo frontend
+    const produtosParaFrontend = produtosDoBanco.map(produto => {
+        const { variacoes, ...restoDoProduto } = produto;
+        return {
+            ...restoDoProduto,
+            variations: variacoes || [] // Renomeia 'variacoes' para 'variations' e garante que seja um array
+        };
+    });
+
+    return NextResponse.json(produtosParaFrontend, { status: 200 });
   } catch (error: unknown) {
     console.error('[API GET /produto] Erro ao buscar produtos:', error);
     let errorMessage = 'Erro desconhecido ao buscar produtos.';

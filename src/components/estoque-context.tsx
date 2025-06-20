@@ -5,8 +5,8 @@ import { toast } from "sonner"
 
 export interface ProductVariante {
   id: string
-  color: string
-  quantity: number
+  cor: string
+  quantidade: number
   image?: string | null
   sku?: string
 }
@@ -533,7 +533,7 @@ export function EstoqueProvider({
         const produto = produtos.find((p) => p.id === perdaData.produtoId)
         const variation = produto?.variations.find((v) => v.id === perdaData.variationId)
         if (variation) {
-          const novaQuantidade = variation.quantity - perdaData.quantidade
+          const novaQuantidade = variation.quantidade - perdaData.quantidade
           await atualizarQuantidadeVariacao(perdaData.variationId, novaQuantidade)
         }
       }
