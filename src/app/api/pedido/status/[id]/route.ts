@@ -1,60 +1,35 @@
 // src/app/api/pedido/status/[id]/route.ts
-import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma" // Importando sua instância configurada do Prisma Client
 
-// Interface para padronizar respostas de erro
+import { NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
+
 interface ErrorResponse {
   error: string
   details?: string
 }
 
-// Tipo para os props da rota
 type RouteContext = {
   params: { id: string }
 }
 
-// --- FUNÇÃO PUT ATUALIZADA para atualizar status e dar baixa no estoque ---
-export async function PUT(
-  request: NextRequest, // A requisição vinda do frontend
-  context: RouteContext, // Contexto para acessar os parâmetros da rota
-): Promise<NextResponse> {
+// --- FUNÇÃO PUT CORRIGIDA ---
+export async function PUT(request: NextRequest, context: RouteContext): Promise<NextResponse> {
   const { id } = context.params
 
-  console.log(
-    "====== [APP ROUTER - PUT /api/pedido/status/[id]] Atualizando status do pedido ======",
-  )
-  console.log("[APP ROUTER] ID do pedido para atualizar:", id)
+  console.log("====== [API] Atualizando status do pedido:", id, "======")
 
   if (!id) {
-    return NextResponse.json<ErrorResponse>(
-      { error: "O ID do pedido é obrigatório na URL." },
-      { status: 400 },
-    )
+    return NextResponse.json<ErrorResponse>({ error: "O ID do pedido é obrigatório." }, { status: 400 })
   }
 
   let requestBody
   try {
     requestBody = await request.json()
-    if (
-      requestBody.status === undefined ||
-      typeof requestBody.status !== "string"
-    ) {
-      return NextResponse.json<ErrorResponse>(
-        {
-          error:
-            'Corpo da requisição inválido: "status" é obrigatório e deve ser um texto.',
-        },
-        { status: 400 },
-      )
+    if (!requestBody.status || typeof requestBody.status !== "string") {
+      return NextResponse.json<ErrorResponse>({ error: 'O corpo da requisição precisa conter um "status" válido.' }, { status: 400 })
     }
   } catch (e) {
-    return NextResponse.json<ErrorResponse>(
-      {
-        error:
-          "Falha ao parsear o corpo da requisição JSON. Certifique-se de enviar um JSON válido.",
-      },
-      { status: 400 },
-    )
+    return NextResponse.json<ErrorResponse>({ error: "Falha ao ler o corpo da requisição." }, { status: 400 })
   }
 
   const { status } = requestBody
@@ -66,85 +41,90 @@ export async function PUT(
         where: { id },
         data: { status },
       })
-      console.log(
-        `[DB UPDATE] Status do pedido ${id} atualizado para ${status}.`,
-      )
+      console.log(`[DB] Status do pedido ${id} atualizado para ${status}.`)
       return NextResponse.json(updatedPedido, { status: 200 })
     } catch (error) {
-      // Tratamento de erro para atualização simples de status
-      console.error(
-        `[DB UPDATE] Erro ao atualizar status do pedido ${id}:`,
-        error,
-      )
-      return NextResponse.json<ErrorResponse>(
-        { error: "Falha ao atualizar status do pedido." },
-        { status: 500 },
-      )
+      console.error(`[DB] Erro ao atualizar status do pedido ${id}:`, error)
+      return NextResponse.json<ErrorResponse>({ error: "Falha ao atualizar status do pedido." }, { status: 500 })
     }
   }
 
   // Se o status for "concluido", execute a transação para dar baixa no estoque.
-  console.log(
-    `[DB TRANSACTION] Iniciando transação para concluir pedido ${id} e dar baixa no estoque.`,
-  )
+  console.log(`[DB] Iniciando transação para concluir pedido ${id} e dar baixa no estoque.`)
 
   try {
-    const result = await prisma.$transaction(async tx => {
-      // 1. Obter os itens do pedido
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Obter os itens do pedido e verificar se já foi concluído
       const pedido = await tx.pedido.findUnique({
         where: { id },
-        select: {
-          item: true, // O campo no seu banco que contém os produtos do pedido
-          status: true,
-        },
+        select: { item: true, status: true },
       })
 
       if (!pedido) {
         throw new Error(`Pedido com ID "${id}" não encontrado.`)
       }
-
-      // Evita dar baixa no estoque múltiplas vezes
-      if (pedido.status === "concluido") {
-        throw new Error(`Pedido ${id} já está concluído. A baixa no estoque já foi realizada.`)
-      }
       
+      // Previne que a baixa seja executada múltiplas vezes
+      if (pedido.status === "concluido") {
+        console.warn(`[DB] Pedido ${id} já está concluído. Nenhuma ação de estoque será executada.`);
+        // Retorna o pedido existente sem alterar o estoque
+        return await tx.pedido.findUnique({ where: { id }});
+      }
+
       const produtosDoPedido = pedido.item as any[]
       if (!produtosDoPedido || produtosDoPedido.length === 0) {
-        throw new Error("Pedido não contém itens para dar baixa.")
+        throw new Error("Pedido não contém itens para dar baixa no estoque.")
       }
 
-      // 2. Criar as operações de atualização de estoque para cada produto
-      const stockUpdateOperations = produtosDoPedido.map(item => {
-        // Encontrar o ID do produto principal, seja de um produto do catálogo ou customizado
-        const produtoId = item.product?.id || item.custom?.id;
+      // 2. Criar uma lista de todas as operações de banco de dados
+      const stockUpdateOperations = [];
 
-        if (!produtoId) {
-          console.warn("Item de pedido sem ID de produto, será ignorado:", item);
-          return null; // Ignora itens sem ID
-        }
+      for (const item of produtosDoPedido) {
+          // Pula itens que não têm os IDs necessários (ex: customizados)
+          if (!item.product?.id || !item.variationId) {
+              console.warn("Item de pedido sem 'product.id' ou 'variationId', ignorado na baixa de estoque:", item);
+              continue;
+          }
 
-        console.log(`[DB TRANSACTION] Preparando baixa de ${item.quantity} unidade(s) do produto ${produtoId}`);
-        
-        return tx.produto.update({
-          where: { id: produtoId },
-          data: {
-            quantidade: {
-              decrement: item.quantity,
-            },
-          },
-        })
-      }).filter(op => op !== null); // Remove quaisquer operações nulas
+          const produtoId = item.product.id;
+          const variationId = item.variationId;
+          const quantidadeBaixa = item.quantity;
 
-      // 3. Executar todas as atualizações de estoque em paralelo
-      await Promise.all(stockUpdateOperations)
+          // Operação 1: Decrementar a quantidade da VARIAÇÃO específica (O CORRETO)
+          stockUpdateOperations.push(
+            tx.produtoVariante.update({
+              where: { id: variationId },
+              data: {
+                quantidade: {
+                  decrement: quantidadeBaixa,
+                },
+              },
+            })
+          );
 
-      // 4. Atualizar o status do pedido para "concluido"
+          // Operação 2: Decrementar também o total do PRODUTO PAI para manter a UI consistente
+          stockUpdateOperations.push(
+            tx.produto.update({
+              where: { id: produtoId },
+              data: {
+                quantidade: {
+                  decrement: quantidadeBaixa,
+                },
+              },
+            })
+          );
+      }
+      
+      // 3. Executa todas as atualizações de estoque em paralelo
+      await Promise.all(stockUpdateOperations);
+
+      // 4. Atualiza o status do pedido principal para "concluido"
       const pedidoAtualizado = await tx.pedido.update({
         where: { id },
         data: { status: "concluido" },
       })
-      
-      console.log(`[DB TRANSACTION] Transação concluída com sucesso para o pedido ${id}.`);
+
+      console.log(`[DB] Transação para o pedido ${id} concluída com sucesso.`)
       return pedidoAtualizado
     })
 
@@ -155,14 +135,13 @@ export async function PUT(
 
     if (error instanceof Error) {
         errorMessage = error.message
-        // Verifica erros específicos do Prisma, como estoque insuficiente (se houver constraints)
-        if ('code' in error && (error as any).code === 'P2025') {
-            errorMessage = `Um dos produtos do pedido não foi encontrado no estoque.`;
+        if ((error as any).code === 'P2025') { // Erro do Prisma para "registro não encontrado"
+            errorMessage = `Um dos produtos ou variações do pedido não foi encontrado no estoque. A transação foi revertida.`;
             errorStatus = 404;
         }
     }
 
-    console.error(`[DB TRANSACTION] Falha na transação do pedido ${id}:`, errorMessage);
+    console.error(`[DB] Falha na transação do pedido ${id}:`, errorMessage);
 
     return NextResponse.json<ErrorResponse>(
       {
