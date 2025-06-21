@@ -1,3 +1,8 @@
+export interface CatalogVariation {
+  id: string;
+  color: string;
+}
+
 export interface CatalogItem {
   id: string
   name: string
@@ -7,9 +12,9 @@ export interface CatalogItem {
   minimumOrder: number
   description: string
   features: string[]
-  colors: string
-  basePrice: number // Preço base por unidade
-  setupFee?: number // Taxa de setup para personalização
+  variations: CatalogVariation[]
+  basePrice: number
+  setupFee?: number
   material: string
   weight?: string
   image?: string
@@ -24,7 +29,17 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Copo térmico de alta qualidade, perfeito para manter suas bebidas na temperatura ideal.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Isolamento térmico", "Dupla parede"],
-    colors: "Preto, Branco, Azul, Vermelho",
+    variations: [
+      { id: "var-copo-termico-azul", color: "Azul" },
+      { id: "var-copo-termico-branco", color: "Branco" },
+      { id: "var-copo-termico-preto", color: "Preto" },
+      { id: "var-copo-termico-rosa", color: "Rosa" },
+      { id: "var-copo-termico-laranja", color: "Laranja" },
+      { id: "var-copo-termico-ciano", color: "Ciano" },
+      { id: "var-copo-termico-roxo", color: "Roxo" },
+      { id: "var-copo-termico-vermelho", color: "Vermelho" },
+      { id: "var-copo-termico-verde", color: "Verde" },
+    ],
     basePrice: 45.9,
     setupFee: 25.0,
     material: "Aço Inoxidável",
@@ -39,7 +54,10 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Copo térmico inovador com caixa de som integrada.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Caixa de som integrada", "Bluetooth 5.0"],
-    colors: "Preto, Branco",
+    variations: [
+        { id: "var-copo-som-preto", color: "Preto" },
+        { id: "var-copo-som-branco", color: "Branco" }
+    ],
     basePrice: 89.9,
     setupFee: 35.0,
     material: "Aço Inoxidável + Eletrônicos",
@@ -54,7 +72,11 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Cuia térmica tradicional com tampa, ideal para chimarrão.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Vem com tampa", "Formato tradicional"],
-    colors: "Verde, Preto, Prata",
+    variations: [
+        { id: "var-cuia-verde", color: "Verde" },
+        { id: "var-cuia-preto", color: "Preto" },
+        { id: "var-cuia-prata", color: "Prata" }
+    ],
     basePrice: 38.9,
     setupFee: 20.0,
     material: "Aço Inoxidável",
@@ -69,7 +91,12 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Caneca térmica com tampa, perfeita para café e chá.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Vem com tampa", "Alça ergonômica"],
-    colors: "Branco, Preto, Azul, Vermelho",
+    variations: [
+        { id: "var-caneca-termica-branca", color: "Branco" },
+        { id: "var-caneca-termica-preta", color: "Preto" },
+        { id: "var-caneca-termica-azul", color: "Azul" },
+        { id: "var-caneca-termica-vermelha", color: "Vermelho" }
+    ],
     basePrice: 42.9,
     setupFee: 22.0,
     material: "Aço Inoxidável",
@@ -78,13 +105,17 @@ export const METALASER_CATALOG: CatalogItem[] = [
   },
   {
     id: "large-thermal-cup-1200ml",
-    name: "Copo Térmico Grande (1200ml)",
+    name: "Copão Térmico (1200ml)",
     category: "Copos e Canecas",
     capacity: "1200ml",
     minimumOrder: 1,
     description: "Copo térmico de grande capacidade para quem precisa de mais hidratação.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Grande capacidade", "Canudo incluso"],
-    colors: "Preto, Branco, Azul",
+    variations: [
+        { id: "var-copao-1200-preto", color: "Preto" },
+        { id: "var-copao-1200-branco", color: "Branco" },
+        { id: "var-copao-1200-azul", color: "Azul" }
+    ],
     basePrice: 65.9,
     setupFee: 30.0,
     material: "Aço Inoxidável",
@@ -93,13 +124,17 @@ export const METALASER_CATALOG: CatalogItem[] = [
   },
   {
     id: "tiffany-thermal-cup-1200ml",
-    name: "Copo Térmico Tiffany Grande (1200ml)",
+    name: "Copão Térmico Tiffany (1200ml)",
     category: "Copos e Canecas",
     capacity: "1200ml",
     minimumOrder: 1,
     description: "Copo térmico estilo Tiffany com design elegante.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Design elegante", "Acabamento premium"],
-    colors: "Azul Tiffany, Rosa, Dourado",
+    variations: [
+        { id: "var-tiffany-azul", color: "Azul Tiffany" },
+        { id: "var-tiffany-rosa", color: "Rosa" },
+        { id: "var-tiffany-dourado", color: "Dourado" }
+    ],
     basePrice: 72.9,
     setupFee: 35.0,
     material: "Aço Inoxidável Premium",
@@ -108,13 +143,18 @@ export const METALASER_CATALOG: CatalogItem[] = [
   },
   {
     id: "temperature-display-bottle-500ml",
-    name: "Squeeze com Display de Temperatura (500ml)",
+    name: "Garrafa Squeeze com Display de Temperatura (500ml)",
     category: "Garrafas e Squeezes",
     capacity: "500ml",
     minimumOrder: 1,
     description: "Squeeze inovador com display que mostra a temperatura da bebida.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Display de temperatura", "LED integrado"],
-    colors: "Preto, Branco",
+    variations: [
+        { id: "var-squeeze-temp-preto", color: "Preto" },
+        { id: "var-squeeze-temp-branco", color: "Branco" },
+        { id: "var-squeeze-temp-vermelho", color: "Vermelho" },
+        { id: "var-squeeze-temp-azul", color: "Azul" }
+    ],
     basePrice: 95.9,
     setupFee: 40.0,
     material: "Aço Inoxidável + Display LED",
@@ -123,13 +163,18 @@ export const METALASER_CATALOG: CatalogItem[] = [
   },
   {
     id: "thermal-squeeze-800ml",
-    name: "Squeeze Térmico (800ml)",
+    name: "Garrafa Squeeze Térmica (800ml)",
     category: "Garrafas e Squeezes",
     capacity: "800ml",
     minimumOrder: 1,
     description: "Squeeze térmico de capacidade média, ideal para atividades físicas.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Isolamento térmico", "Bico esportivo"],
-    colors: "Azul, Verde, Preto, Branco",
+    variations: [
+      { id: "var-squeeze-800-azul", color: "Azul" },
+      { id: "var-squeeze-800-verde", color: "Verde" },
+      { id: "var-squeeze-800-preto", color: "Preto" },
+      { id: "var-squeeze-800-branco", color: "Branco" }
+    ],
     basePrice: 52.9,
     setupFee: 25.0,
     material: "Aço Inoxidável",
@@ -138,13 +183,17 @@ export const METALASER_CATALOG: CatalogItem[] = [
   },
   {
     id: "thermal-squeeze-1l",
-    name: "Squeeze Térmico (1 Litro)",
+    name: "Garrafa Squeeze Térmica (1 Litro)",
     category: "Garrafas e Squeezes",
     capacity: "1 Litro",
     minimumOrder: 1,
     description: "Squeeze térmico de grande capacidade.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Grande capacidade", "Alça de transporte"],
-    colors: "Preto, Azul, Verde",
+    variations: [
+      { id: "var-squeeze-1l-preto", color: "Preto" },
+      { id: "var-squeeze-1l-azul", color: "Azul" },
+      { id: "var-squeeze-1l-verde", color: "Verde" }
+    ],
     basePrice: 58.9,
     setupFee: 28.0,
     material: "Aço Inoxidável",
@@ -159,7 +208,11 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Garrafa térmica de alta capacidade para uso prolongado.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Alta capacidade", "Isolamento 24h"],
-    colors: "Preto, Prata, Azul",
+    variations: [
+      { id: "var-garrafa-1-2l-preto", color: "Preto" },
+      { id: "var-garrafa-1-2l-prata", color: "Prata" },
+      { id: "var-garrafa-1-2l-azul", color: "Azul" }
+    ],
     basePrice: 68.9,
     setupFee: 32.0,
     material: "Aço Inoxidável",
@@ -174,7 +227,11 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Garrafa térmica com sistema de abertura rápida.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Abertura rápida", "Sistema flip"],
-    colors: "Preto, Branco, Azul",
+    variations: [
+      { id: "var-quickflip-preto", color: "Preto" },
+      { id: "var-quickflip-branco", color: "Branco" },
+      { id: "var-quickflip-azul", color: "Azul" }
+    ],
     basePrice: 62.9,
     setupFee: 30.0,
     material: "Aço Inoxidável",
@@ -189,7 +246,12 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Garrafa térmica modelo Veridiana com design exclusivo.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Design exclusivo", "Acabamento fosco"],
-    colors: "Rosa, Azul, Verde, Preto",
+    variations: [
+      { id: "var-veridiana-rosa", color: "Rosa" },
+      { id: "var-veridiana-azul", color: "Azul" },
+      { id: "var-veridiana-verde", color: "Verde" },
+      { id: "var-veridiana-preto", color: "Preto" }
+    ],
     basePrice: 59.9,
     setupFee: 28.0,
     material: "Aço Inoxidável",
@@ -204,7 +266,11 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Garrafa térmica especialmente projetada para café e chá.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Ideal para café/chá", "Boca larga"],
-    colors: "Marrom, Preto, Dourado",
+    variations: [
+      { id: "var-cafe-marrom", color: "Marrom" },
+      { id: "var-cafe-preto", color: "Preto" },
+      { id: "var-cafe-dourado", color: "Dourado" }
+    ],
     basePrice: 64.9,
     setupFee: 30.0,
     material: "Aço Inoxidável",
@@ -218,7 +284,11 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 50,
     description: "Chaveiro mosquetão resistente e prático.",
     features: ["Pedido mínimo 50 unidades", "Personalizável com sua arte/logo", "Material resistente", "Funcional"],
-    colors: "Prata, Preto, Azul",
+    variations: [
+      { id: "var-mosquetao-prata", color: "Prata" },
+      { id: "var-mosquetao-preto", color: "Preto" },
+      { id: "var-mosquetao-azul", color: "Azul" }
+    ],
     basePrice: 8.9,
     setupFee: 45.0,
     material: "Alumínio",
@@ -232,7 +302,11 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 50,
     description: "Chaveiro abridor de garrafa em metal de alta qualidade.",
     features: ["Pedido mínimo 50 unidades", "Personalizável com sua arte/logo", "Metal de qualidade", "Funcional"],
-    colors: "Prata, Preto, Dourado",
+    variations: [
+      { id: "var-abridor-prata", color: "Prata" },
+      { id: "var-abridor-preto", color: "Preto" },
+      { id: "var-abridor-dourado", color: "Dourado" }
+    ],
     basePrice: 12.9,
     setupFee: 50.0,
     material: "Aço Inoxidável",
@@ -246,7 +320,12 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 50,
     description: "Caneta em metal com acabamento premium.",
     features: ["Pedido mínimo 50 unidades", "Personalizável com sua arte/logo", "Acabamento premium", "Refil azul"],
-    colors: "Prata, Preto, Azul, Dourado",
+    variations: [
+      { id: "var-caneta-metal-prata", color: "Prata" },
+      { id: "var-caneta-metal-preto", color: "Preto" },
+      { id: "var-caneta-metal-azul", color: "Azul" },
+      { id: "var-caneta-metal-dourado", color: "Dourado" }
+    ],
     basePrice: 18.9,
     setupFee: 60.0,
     material: "Metal",
@@ -260,7 +339,12 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 50,
     description: "Caneta com função anti-stress integrada.",
     features: ["Pedido mínimo 50 unidades", "Personalizável com sua arte/logo", "Função anti-stress", "Multifuncional"],
-    colors: "Azul, Verde, Vermelho, Preto",
+    variations: [
+      { id: "var-caneta-stress-azul", color: "Azul" },
+      { id: "var-caneta-stress-verde", color: "Verde" },
+      { id: "var-caneta-stress-vermelho", color: "Vermelho" },
+      { id: "var-caneta-stress-preto", color: "Preto" }
+    ],
     basePrice: 22.9,
     setupFee: 65.0,
     material: "Plástico + Metal",
@@ -274,7 +358,9 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Canivete em aço inoxidável com clip e sistema de trava.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Aço inoxidável", "Sistema de trava"],
-    colors: "Prata",
+    variations: [
+      { id: "var-canivete-prata", color: "Prata" }
+    ],
     basePrice: 35.9,
     setupFee: 20.0,
     material: "Aço Inoxidável",
@@ -289,7 +375,9 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Faca de alta qualidade com 32 cm de comprimento.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Alta qualidade", "Cabo ergonômico"],
-    colors: "Natural",
+    variations: [
+        { id: "var-faca-32-natural", color: "Madeira Natural" }
+    ],
     basePrice: 89.9,
     setupFee: 35.0,
     material: "Aço Carbono + Madeira",
@@ -304,7 +392,9 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Faca de alta qualidade com 30 cm de comprimento.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Alta qualidade", "Cabo ergonômico"],
-    colors: "Natural",
+    variations: [
+        { id: "var-faca-30-natural", color: "Madeira Natural" }
+    ],
     basePrice: 79.9,
     setupFee: 32.0,
     material: "Aço Carbono + Madeira",
@@ -319,7 +409,9 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Faca de alta qualidade com 42 cm de comprimento.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Alta qualidade", "Cabo ergonômico"],
-    colors: "Natural",
+    variations: [
+        { id: "var-faca-42-natural", color: "Madeira Natural" }
+    ],
     basePrice: 119.9,
     setupFee: 45.0,
     material: "Aço Carbono + Madeira",
@@ -333,7 +425,9 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Kit completo para churrasco com 2 peças essenciais.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Kit completo", "Estojo incluso"],
-    colors: "Natural",
+    variations: [
+        { id: "var-kit-churrasco-natural", color: "Madeira Natural" }
+    ],
     basePrice: 145.9,
     setupFee: 55.0,
     material: "Aço Inoxidável + Madeira",
@@ -348,7 +442,9 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Kit completo de ferramentas com 12 peças úteis.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "12 peças", "Estojo resistente"],
-    colors: "Preto",
+    variations: [
+        { id: "var-kit-ferramentas-preto", color: "Preto" }
+    ],
     basePrice: 189.9,
     setupFee: 75.0,
     material: "Aço + Plástico",
@@ -362,7 +458,11 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Agenda 2025 completa acompanhada de caneta.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Inclui caneta", "Capa dura"],
-    colors: "Preto, Azul, Marrom",
+    variations: [
+      { id: "var-agenda-preto", color: "Preto" },
+      { id: "var-agenda-azul", color: "Azul" },
+      { id: "var-agenda-marrom", color: "Marrom" }
+    ],
     basePrice: 45.9,
     setupFee: 25.0,
     material: "Couro Sintético",
@@ -376,7 +476,10 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Saca-rolha eletrônico moderno e eficiente.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Funcionamento eletrônico", "Recarregável"],
-    colors: "Preto, Prata",
+    variations: [
+      { id: "var-saca-rolha-preto", color: "Preto" },
+      { id: "var-saca-rolha-prata", color: "Prata" }
+    ],
     basePrice: 125.9,
     setupFee: 50.0,
     material: "Aço Inoxidável + Eletrônicos",
@@ -390,7 +493,11 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Lanterna resistente e de alta luminosidade.",
     features: ["Sem pedido mínimo", "Personalizável com sua arte/logo", "Alta luminosidade", "LED de longa duração"],
-    colors: "Preto, Prata",
+    variations: [
+      { id: "var-lanterna-preto", color: "Preto" },
+      { id: "var-lanterna-prata", color: "Prata" },
+      { id: "var-lanterna-vermelho", color: "Vermelho" }
+    ],
     basePrice: 38.9,
     setupFee: 20.0,
     material: "Alumínio",
@@ -409,7 +516,9 @@ export const METALASER_CATALOG: CatalogItem[] = [
       "Personalizável com sua arte/logo",
       "Presente premium",
     ],
-    colors: "Madeira natural",
+    variations: [
+      { id: "var-kit-picanheira-natural", color: "Madeira Natural" }
+    ],
     basePrice: 165.9,
     setupFee: 65.0,
     material: "Aço Inoxidável + Madeira",
@@ -423,7 +532,9 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Petisqueira elegante em bambu, ideal para comida japonesa.",
     features: ["Design elegante em bambu", "Personalizável com sua arte/logo", "Sustentável", "Compartimentos"],
-    colors: "Bambu natural",
+    variations: [
+      { id: "var-petisqueira-bambu", color: "Bambu Natural" }
+    ],
     basePrice: 78.9,
     setupFee: 35.0,
     material: "Bambu",
@@ -439,13 +550,14 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Tábua de petiscos em madeira de qualidade.",
     features: ["Personalizável com sua arte/logo", "Madeira de qualidade", "Acabamento premium", "Alça de couro"],
-    colors: "Madeira natural",
+    variations: [
+      { id: "var-tabua-lanche-natural", color: "Madeira Natural" }
+    ],
     basePrice: 52.9,
     setupFee: 25.0,
     material: "Madeira Nobre",
     weight: "320g",
     image: "uploads/tabua-lanche.png"
-
   },
   {
     id: "large-cutting-board",
@@ -455,7 +567,9 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Tábua de corte grande para uso profissional. Pode ter pequenas variações.",
     features: ["Uso profissional", "Pode ter pequenas variações", "Grande capacidade", "Madeira tratada"],
-    colors: "Madeira natural",
+    variations: [
+      { id: "var-tabua-grande-natural", color: "Madeira Natural" }
+    ],
     basePrice: 145.9,
     setupFee: 55.0,
     material: "Madeira Tratada",
@@ -464,13 +578,15 @@ export const METALASER_CATALOG: CatalogItem[] = [
   },
   {
     id: "medium-cutting-board-42x42",
-    name: "Tábua de Corte Média",
+    name: "Tábua de Corte Média Quadrada",
     category: "Tábuas e Pranchas",
     dimensions: "42 cm x 42 cm",
     minimumOrder: 1,
     description: "Tábua de corte média quadrada, versátil para diversos usos.",
     features: ["Personalizável com sua arte/logo", "Formato quadrado", "Versátil", "Pés antiderrapantes"],
-    colors: "Madeira natural",
+    variations: [
+      { id: "var-tabua-media-42-natural", color: "Madeira Natural" }
+    ],
     basePrice: 89.9,
     setupFee: 40.0,
     material: "Madeira Nobre",
@@ -485,7 +601,9 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Tábua de corte média retangular, ideal para uso doméstico.",
     features: ["Personalizável com sua arte/logo", "Formato retangular", "Uso doméstico", "Sulco para líquidos"],
-    colors: "Madeira natural",
+    variations: [
+      { id: "var-tabua-media-50-natural", color: "Madeira Natural" }
+    ],
     basePrice: 95.9,
     setupFee: 42.0,
     material: "Madeira Nobre",
@@ -500,7 +618,9 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Tábua de corte média alongada, perfeita para carnes.",
     features: ["Personalizável com sua arte/logo", "Formato alongado", "Ideal para carnes", "Sulco para líquidos"],
-    colors: "Madeira natural",
+    variations: [
+      { id: "var-tabua-media-65-natural", color: "Madeira Natural" }
+    ],
     basePrice: 108.9,
     setupFee: 45.0,
     material: "Madeira Nobre",
@@ -515,7 +635,9 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Tábua premium especialmente projetada para churrasco.",
     features: ["Personalizável com sua arte/logo", "Design premium", "Especial para churrasco", "Acabamento especial"],
-    colors: "Madeira natural",
+    variations: [
+      { id: "var-tabua-premium-natural", color: "Madeira Natural" }
+    ],
     basePrice: 125.9,
     setupFee: 50.0,
     material: "Madeira Premium",
@@ -530,7 +652,9 @@ export const METALASER_CATALOG: CatalogItem[] = [
     minimumOrder: 1,
     description: "Tábua decorativa com design 'Cantinho do Churrasco'.",
     features: ["Design 'Cantinho do Churrasco'", "Decorativa", "Espessura 3 cm", "Ganchos para pendurar"],
-    colors: "Madeira natural",
+    variations: [
+      { id: "var-tabua-decorativa-natural", color: "Madeira Natural" }
+    ],
     basePrice: 68.9,
     setupFee: 30.0,
     material: "Madeira Nobre",

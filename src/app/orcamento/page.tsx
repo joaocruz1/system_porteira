@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -19,10 +18,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-import { Package, Send, Phone, MapPin, Instagram, Plus, Minus, ShoppingCart, Calculator, Info, CheckCircle, Mail } from 'lucide-react'
-import { METALASER_CATALOG, CATEGORIES, type CatalogItem } from "@/lib/metal-catalog"
+import { Package, Send, Phone, MapPin, Instagram, Plus, Minus, ShoppingCart, Calculator, Info, CheckCircle, Mail, Loader2 } from 'lucide-react'
+import { METALASER_CATALOG, CATEGORIES, type CatalogItem, type CatalogVariation } from "@/lib/metal-catalog"
 import Image from "next/image"
-// Adicionar import do novo componente no topo do arquivo
 import { CustomProductForm } from "@/components/custom-product-form"
 import { toast } from "sonner"
 
@@ -40,11 +38,12 @@ interface CustomQuoteItem {
   isCustom: true
 }
 
-// Atualizar o tipo QuoteItem para aceitar produtos personalizados
 interface QuoteItem {
   product?: CatalogItem
   custom?: CustomQuoteItem
   quantity: number
+  variationId?: string
+  color?: string
   logoType: "text" | "image"
   logoText?: string
   logoImage?: File
@@ -54,7 +53,6 @@ interface QuoteItem {
   totalPrice: number
 }
 
-// Atualizar a interface CustomerData para incluir endereço e remover message
 interface CustomerData {
   name: string
   email: string
@@ -68,7 +66,6 @@ export default function PublicQuotePage() {
   const [selectedCategory, setSelectedCategory] = useState("Todos")
   const [searchTerm, setSearchTerm] = useState("")
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([])
-  // Atualizar o estado inicial de customerData para incluir endereço e remover message
   const [customerData, setCustomerData] = useState<CustomerData>({
     name: "",
     email: "",
@@ -83,6 +80,7 @@ export default function PublicQuotePage() {
   const [shippingCost, setShippingCost] = useState<number>(0)
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false)
   const [shippingError, setShippingError] = useState<string>("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const filteredProducts = METALASER_CATALOG.filter((product) => {
     const matchesCategory = selectedCategory === "Todos" || product.category === selectedCategory
@@ -102,6 +100,7 @@ export default function PublicQuotePage() {
   const addToQuote = (
     product: CatalogItem,
     quantity: number,
+    variation: CatalogVariation,
     logoType: "text" | "image",
     logoText?: string,
     logoImage?: File,
@@ -112,6 +111,8 @@ export default function PublicQuotePage() {
     const newItem: QuoteItem = {
       product,
       quantity,
+      variationId: variation.id,
+      color: variation.color,
       logoType,
       logoText,
       logoImage,
@@ -126,7 +127,7 @@ export default function PublicQuotePage() {
   }
 
   const addCustomToQuote = (customItem: CustomQuoteItem) => {
-    const setupFee = 50.0 // Taxa padrão para produtos personalizados
+    const setupFee = 50.0
     const unitPrice = customItem.estimatedPrice
     const totalPrice = unitPrice * customItem.quantity + setupFee
 
@@ -163,7 +164,7 @@ export default function PublicQuotePage() {
       setupFee = calc.setupFee
     } else if (item.custom) {
       unitPrice = item.custom.estimatedPrice
-      setupFee = 50.0 // Taxa padrão para produtos personalizados
+      setupFee = 50.0
     } else {
       return
     }
@@ -181,69 +182,64 @@ export default function PublicQuotePage() {
   }
 
   const calculateShipping = async (cep: string) => {
-    if (!cep || cep.length < 8) return
-    
-    setIsCalculatingShipping(true)
-    setShippingError("")
-    
-    try {
-      // Remover caracteres não numéricos do CEP
-      const cleanCep = cep.replace(/\D/g, '')
-      
-      if (cleanCep.length !== 8) {
-        setShippingError("CEP deve ter 8 dígitos")
-        return
-      }
-  
-      // Simular peso total baseado nos itens do orçamento
-      const totalWeight = quoteItems.reduce((acc, item) => {
-        const weight = item.product?.weight ? parseFloat(item.product.weight.replace(/[^\d.,]/g, '').replace(',', '.')) : 0.5
-        return acc + (weight * item.quantity)
-      }, 0)
-  
-      // Usar API dos Correios via ViaCEP para validar CEP e depois calcular frete
-      const cepResponse = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
-      const cepData = await cepResponse.json()
-      
-      if (cepData.erro) {
-        setShippingError("CEP não encontrado")
-        return
-      }
-  
-      // Calcular frete baseado na distância (simulação)
-      // CEP origem: 37570-000 (Ouro Fino/MG)
-      const originCep = "37570000"
-      
-      // Simulação de cálculo de frete baseado na região
-      let shippingRate = 15.00 // Taxa base
-      
-      // Ajustar taxa baseado no estado
-      const state = cepData.uf
-      if (state === "MG") {
-        shippingRate = 12.00
-      } else if (["SP", "RJ", "ES"].includes(state)) {
-        shippingRate = 18.00
-      } else if (["PR", "SC", "RS"].includes(state)) {
-        shippingRate = 22.00
-      } else if (["GO", "MT", "MS", "DF"].includes(state)) {
-        shippingRate = 25.00
-      } else {
-        shippingRate = 30.00
-      }
-      
-      // Adicionar taxa por peso
-      const weightFee = Math.max(0, (totalWeight - 1) * 3.00)
-      const finalShippingCost = shippingRate + weightFee
-      
-      setShippingCost(finalShippingCost)
-      
-    } catch (error) {
-      console.error("Erro ao calcular frete:", error)
-      setShippingError("Erro ao calcular frete. Tente novamente.")
-    } finally {
-      setIsCalculatingShipping(false)
+    const cleanCep = cep.replace(/\D/g, '');
+    if (cleanCep.length !== 8) {
+      setShippingError("CEP inválido. Deve conter 8 dígitos.");
+      setShippingCost(0);
+      return;
     }
-  }
+
+    if (quoteItems.length === 0) {
+      setShippingError("Adicione itens ao orçamento para calcular o frete.");
+      setShippingCost(0);
+      return;
+    }
+
+    setIsCalculatingShipping(true);
+    setShippingError("");
+    setShippingCost(0);
+
+    try {
+      const totalWeight = quoteItems.reduce((acc, item) => {
+        // Assuming 'weight' in CatalogItem is a string like '500g' or '1.2kg'
+        // Need to parse it and convert to kilograms
+        const weightString = item.product?.weight || '0g'; // Default to 0g if weight is not specified
+        let weightInGrams = 0;
+
+        if (weightString.includes('kg')) {
+          weightInGrams = parseFloat(weightString.replace(/[^\d.,]/g, '').replace(',', '.')) * 1000;
+        } else if (weightString.includes('g')) {
+          weightInGrams = parseFloat(weightString.replace(/[^\d.,]/g, '').replace(',', '.'));
+        }
+
+        return acc + (weightInGrams * item.quantity);
+      }, 0) / 1000; // Convert total grams to kilograms
+
+      const response = await fetch('/api/shipping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cepDestino: cleanCep,
+          pesoKg: Math.max(0.3, totalWeight).toFixed(2) // Ensure minimum weight for calculation if needed
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.details || data.error || "Erro ao consultar o frete.");
+      }
+
+      setShippingCost(data.shippingCost);
+    } catch (error) {
+      console.error("Erro ao calcular frete:", error);
+      const errorMessage = error instanceof Error ? error.message : "Não foi possível calcular o frete. Tente novamente.";
+      setShippingError(errorMessage);
+    } finally {
+      setIsCalculatingShipping(false);
+    }
+  };
+
 
   const getQuoteTotals = () => {
     const subtotal = quoteItems.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0)
@@ -253,69 +249,66 @@ export default function PublicQuotePage() {
     return { subtotal, setupFees, shippingCost, total }
   }
 
-const sendQuote = async () => {
-  if (!customerData.name || !customerData.email || !customerData.phone || !customerData.cep || quoteItems.length === 0) {
-    alert("Por favor, preencha seus dados e adicione pelo menos um item ao orçamento.");
-    return;
-  }
-
-  console.log("Dados do Cliente para Envio:", customerData);
-  console.log("Itens do Orçamento para Envio:", quoteItems);
-
-  const formData = new FormData();
-
-
-  formData.append('customerData', JSON.stringify(customerData));
-  let mainLogoFile: File | undefined = undefined;
-
-  const processedQuoteItems = quoteItems.map(item => {
-
-    if (item.logoType === "image" && item.logoImage && !mainLogoFile) {
-      mainLogoFile = item.logoImage;
-    }
-
-    const { logoImage, ...itemWithoutFile } = item;
-    return itemWithoutFile;
-  });
-
-  formData.append('quoteItems', JSON.stringify(processedQuoteItems));
-
-  if (mainLogoFile) {
-    formData.append('logoFile', mainLogoFile);
-  }
-
-
-  try {
-    const response = await fetch("/api/pedido", {
-      method: "POST",
-      // Não defina 'Content-Type' manualmente para FormData; o browser faz isso.
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorResult = await response.json().catch(() => ({ error: "Erro desconhecido", details: response.statusText }));
-      alert(`Ocorreu um erro ao enviar o orçamento: ${errorResult.details || errorResult.error || response.statusText}. Por favor, tente novamente mais tarde.`);
+  const sendQuote = async () => {
+    if (!customerData.name || !customerData.email || !customerData.phone || !customerData.cep || quoteItems.length === 0) {
+      toast.error("Por favor, preencha seus dados e adicione pelo menos um item ao orçamento.");
       return;
     }
-    toast.success("Orçamento enviado com sucesso! Entraremos em contato em breve.");
 
-    // Reset form
-    setCustomerData({
-      name: "",
-      email: "",
-      phone: "",
-      company: "",
-      address: "",
-      cep: "",
+    setIsSubmitting(true);
+
+    const formData = new FormData();
+    formData.append('customerData', JSON.stringify(customerData));
+    let mainLogoFile: File | undefined = undefined;
+
+    const processedQuoteItems = quoteItems.map(item => {
+      // Find the first image logo to send, if multiple are present
+      if (item.logoType === "image" && item.logoImage && !mainLogoFile) {
+        mainLogoFile = item.logoImage;
+      }
+      // Exclude the File object from the JSON string to avoid circular references and large payloads
+      const { logoImage, ...itemWithoutFile } = item;
+      return itemWithoutFile;
     });
-    setShippingCost(0);
-    setShippingError("");
-    setQuoteItems([]); // Limpar itens do orçamento também
-  } catch (error) {
+
+    formData.append('quoteItems', JSON.stringify(processedQuoteItems));
+
+    if (mainLogoFile) {
+      formData.append('logoFile', mainLogoFile);
+    }
+
+    try {
+      const response = await fetch("/api/pedido", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorResult = await response.json().catch(() => ({ error: "Erro desconhecido", details: response.statusText }));
+        toast.error(`Ocorreu um erro ao enviar o orçamento: ${errorResult.details || errorResult.error || "Tente novamente."}`);
+        return;
+      }
+      toast.success("Orçamento enviado com sucesso! Entraremos em contato em breve.");
+
+      // Reset form and state after successful submission
+      setCustomerData({
+        name: "",
+        email: "",
+        phone: "",
+        company: "",
+        address: "",
+        cep: "",
+      });
+      setShippingCost(0);
+      setShippingError("");
+      setQuoteItems([]);
+    } catch (error) {
       console.error("Falha na requisição de envio do orçamento:", error);
-      alert("Falha na comunicação ao enviar o orçamento. Verifique sua conexão e tente novamente.");
-  }
-};
+      toast.error("Falha na comunicação ao enviar o orçamento. Verifique sua conexão e tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
 
   const scrollToCustomerData = () => {
@@ -330,24 +323,15 @@ const sendQuote = async () => {
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case "Copos e Canecas":
-        return "☕"
-      case "Garrafas e Squeezes":
-        return "🍼"
-      case "Chaveiros e Acessórios":
-        return "🔑"
-      case "Escritório":
-        return "✏️"
-      case "Facas e Utensílios":
-        return "🔪"
-      case "Kits e Conjuntos":
-        return "📦"
-      case "Tábuas e Pranchas":
-        return "🪵"
-      case "Utensílios":
-        return "🔧"
-      default:
-        return "📋"
+      case "Copos e Canecas": return "☕";
+      case "Garrafas e Squeezes": return "🍼";
+      case "Chaveiros e Acessórios": return "🔑";
+      case "Escritório": return "✏️";
+      case "Facas e Utensílios": return "🔪";
+      case "Kits e Conjuntos": return "📦";
+      case "Tábuas e Pranchas": return "🪵";
+      case "Utensílios": return "🔧";
+      default: return "📋";
     }
   }
 
@@ -357,7 +341,6 @@ const sendQuote = async () => {
       case "Garrafas e Squeezes":
         return { width: 300, height: 400 }
       case "Facas e Utensílios":
-        return { width: 400, height: 300 }
       case "Tábuas e Pranchas":
         return { width: 400, height: 300 }
       default:
@@ -369,7 +352,6 @@ const sendQuote = async () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
@@ -404,9 +386,7 @@ const sendQuote = async () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid gap-8 lg:grid-cols-4">
-          {/* Catálogo de Produtos */}
           <div className="lg:col-span-3 space-y-6">
-            {/* Filtros */}
             <Card className="shadow-sm">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-gray-900">
@@ -452,7 +432,6 @@ const sendQuote = async () => {
               </div>
             </Card>
 
-            {/* Grid de Produtos */}
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {filteredProducts.map((product) => {
                 const imageDimensions = getProductImageDimensions(product.category)
@@ -573,9 +552,7 @@ const sendQuote = async () => {
             )}
           </div>
 
-          {/* Sidebar - Orçamento */}
           <div className="space-y-6">
-            {/* Resumo do Orçamento */}
             <Card className="shadow-sm">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-gray-900">
@@ -591,15 +568,15 @@ const sendQuote = async () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* Lista de Itens */}
                     <div className="space-y-3 max-h-64 overflow-y-auto">
                       {quoteItems.map((item, index) => (
                         <div key={index} className="border rounded-lg p-3 bg-gray-50">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
-                              <h4 className="font-medium text-sm text-gray-900">
-                                {item.product?.name || item.custom?.productName}
-                              </h4>
+                                <h4 className="font-medium text-sm text-gray-900">
+                                    {item.product?.name || item.custom?.productName}
+                                    {item.color && <span className="text-gray-500 font-normal"> - {item.color}</span>}
+                                </h4>
                               {item.custom && (
                                 <Badge variant="secondary" className="text-xs mt-1">
                                   Produto Personalizado
@@ -666,7 +643,6 @@ const sendQuote = async () => {
 
                     <Separator />
 
-                    {/* Totais */}
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Subtotal produtos:</span>
@@ -680,7 +656,7 @@ const sendQuote = async () => {
                       )}
                       {shippingCost > 0 && (
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Frete:</span>
+                          <span className="text-gray-600">Frete (PAC):</span>
                           <span className="font-medium">R$ {shippingCost.toFixed(2)}</span>
                         </div>
                       )}
@@ -728,7 +704,6 @@ const sendQuote = async () => {
               </CardContent>
             </Card>
 
-            {/* Dados do Cliente */}
             {quoteItems.length > 0 && (
               <Card id="customer-data-section" className="shadow-sm">
                 <CardHeader className="pb-4">
@@ -747,6 +722,7 @@ const sendQuote = async () => {
                       placeholder="Seu nome completo"
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div>
@@ -761,6 +737,7 @@ const sendQuote = async () => {
                       placeholder="seu@email.com"
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div>
@@ -769,12 +746,13 @@ const sendQuote = async () => {
                     </Label>
                     <Input
                       id="phone"
-                      type="number"
+                      type="tel"
                       value={customerData.phone}
                       onChange={(e) => setCustomerData({ ...customerData, phone: e.target.value || "" })}
                       placeholder="(35) 99999-9999"
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div>
@@ -787,9 +765,9 @@ const sendQuote = async () => {
                       onChange={(e) => setCustomerData({ ...customerData, company: e.target.value || "" })}
                       placeholder="Nome da empresa"
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      disabled={isSubmitting}
                     />
                   </div>
-                  {/* Substituir o campo de observações pelo campo de endereço na seção "Seus Dados" */}
                   <div>
                     <Label htmlFor="cep" className="text-gray-700 font-medium">
                       CEP *
@@ -800,20 +778,25 @@ const sendQuote = async () => {
                       onChange={(e) => {
                         const newCep = e.target.value || ""
                         setCustomerData({ ...customerData, cep: newCep })
-                        
-                        // Calcular frete quando CEP tiver 8 dígitos
-                        const cleanCep = newCep.replace(/\D/g, '')
+                        // Limpa o custo e erro do frete ao digitar um novo CEP
+                        setShippingCost(0)
+                        setShippingError("")
+                      }}
+                      onBlur={(e) => {
+                        // Calcula o frete quando o campo perde o foco
+                        const cleanCep = e.target.value.replace(/\D/g, '')
                         if (cleanCep.length === 8) {
                           calculateShipping(cleanCep)
                         } else {
-                          setShippingCost(0)
-                          setShippingError("")
+                          setShippingError("CEP inválido. Deve conter 8 dígitos.");
+                          setShippingCost(0); // Garante que o custo seja zero se o CEP for inválido ao sair do foco
                         }
                       }}
                       placeholder="00000-000"
                       maxLength={9}
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required
+                      disabled={isSubmitting}
                     />
                     {isCalculatingShipping && (
                       <p className="text-xs text-blue-600 mt-1">Calculando frete...</p>
@@ -823,11 +806,11 @@ const sendQuote = async () => {
                     )}
                     {shippingCost > 0 && !shippingError && (
                       <p className="text-xs text-green-600 mt-1">
-                        Frete calculado: R$ {shippingCost.toFixed(2)}
+                        Frete PAC: R$ {shippingCost.toFixed(2)}
                       </p>
                     )}
                   </div>
-        
+
                   <div>
                     <Label htmlFor="address" className="text-gray-700 font-medium">
                       Endereço Completo *
@@ -840,17 +823,26 @@ const sendQuote = async () => {
                       rows={3}
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
-                  <Button onClick={sendQuote} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                    <Send className="mr-2 h-4 w-4" />
-                    Solicitar Orçamento Detalhado
+                  <Button onClick={sendQuote} className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-2 h-4 w-4" />
+                        Solicitar Orçamento Detalhado
+                      </>
+                    )}
                   </Button>
                 </CardContent>
               </Card>
             )}
 
-            {/* Informações da Empresa */}
             <Card className="shadow-sm">
               <CardHeader className="pb-4">
                 <CardTitle className="text-gray-900">Contato</CardTitle>
@@ -879,7 +871,6 @@ const sendQuote = async () => {
               </CardContent>
             </Card>
 
-            {/* Garantias */}
             <Card className="shadow-sm bg-green-50 border-green-200">
               <CardContent className="p-4">
                 <div className="space-y-2">
@@ -906,13 +897,13 @@ const sendQuote = async () => {
         </div>
       </div>
 
-      {/* Botão flutuante para mobile - levar aos dados do cliente */}
       {quoteItems.length > 0 && (
         <div className="fixed bottom-4 right-4 z-50 md:hidden">
           <Button
             onClick={scrollToCustomerData}
             className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg rounded-full h-14 w-14 p-0"
             size="lg"
+            disabled={isSubmitting}
           >
             <div className="flex flex-col items-center">
               <Send className="h-5 w-5" />
@@ -922,7 +913,6 @@ const sendQuote = async () => {
         </div>
       )}
 
-      {/* Dialog para Adicionar Produto */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -935,7 +925,6 @@ const sendQuote = async () => {
         </DialogContent>
       </Dialog>
 
-      {/* Adicionar novo Dialog para produto personalizado após o Dialog existente */}
       <Dialog open={customQuoteOpen} onOpenChange={setCustomQuoteOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
@@ -959,6 +948,7 @@ function ProductCustomizationForm({
   onAdd: (
     product: CatalogItem,
     quantity: number,
+    variation: CatalogVariation,
     logoType: "text" | "image",
     logoText?: string,
     logoImage?: File,
@@ -966,6 +956,7 @@ function ProductCustomizationForm({
   ) => void
 }) {
   const [quantity, setQuantity] = useState(product.minimumOrder)
+  const [selectedVariationId, setSelectedVariationId] = useState<string>(product.variations[0]?.id || "");
   const [logoType, setLogoType] = useState<"text" | "image">("text")
   const [logoText, setLogoText] = useState("")
   const [logoImage, setLogoImage] = useState<File | null>(null)
@@ -981,7 +972,13 @@ function ProductCustomizationForm({
       return
     }
 
-    onAdd(product, quantity, logoType, logoText || "", logoImage || undefined, observations || "")
+    const selectedVariation = product.variations.find(v => v.id === selectedVariationId);
+    if (!selectedVariation) {
+        alert("Por favor, selecione uma cor válida.");
+        return;
+    }
+
+    onAdd(product, quantity, selectedVariation, logoType, logoText || "", logoImage || undefined, observations || "")
   }
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1039,6 +1036,26 @@ function ProductCustomizationForm({
           <p className="text-xs text-gray-500 mt-1">Pedido mínimo: {product.minimumOrder} unidades</p>
         )}
       </div>
+
+      {product.variations && product.variations.length > 0 && (
+          <div>
+              <Label htmlFor="color-variation" className="text-gray-700 font-medium">
+                  Cor
+              </Label>
+              <Select value={selectedVariationId} onValueChange={setSelectedVariationId}>
+                  <SelectTrigger id="color-variation" className="border-gray-300 focus:border-blue-500">
+                      <SelectValue placeholder="Selecione a cor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      {product.variations.map((variation) => (
+                          <SelectItem key={variation.id} value={variation.id}>
+                              {variation.color}
+                          </SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
+          </div>
+      )}
 
       <div>
         <Label className="text-gray-700 font-medium">Tipo de Personalização</Label>
@@ -1109,7 +1126,6 @@ function ProductCustomizationForm({
         />
       </div>
 
-      {/* Preview do Orçamento */}
       <div className="bg-blue-50 p-4 rounded border border-blue-200">
         <h4 className="font-medium text-gray-900 mb-3">Preview do Orçamento</h4>
         <div className="space-y-2 text-sm">

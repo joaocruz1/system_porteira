@@ -14,6 +14,8 @@ interface QuoteItemFromFrontend {
   product?: any;
   custom?: any;
   quantity: number;
+  variationId?: string; 
+  color?: string; 
   logoType: "text" | "image";
   logoText?: string;
   observations?: string;

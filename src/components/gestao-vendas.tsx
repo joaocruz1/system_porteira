@@ -27,7 +27,9 @@ import { toast } from "sonner" // Importando toast para notificações
 // Interface para os itens do pedido, alinhada com a página pública
 interface NovoPedidoProduto {
   id: string
+  variationId: string; 
   name: string
+  color: string; 
   quantity: number
   unitPrice: number // Preço base do produto
   setupFee: number // Taxa de setup do produto
@@ -46,6 +48,7 @@ export function GestaoVendas() {
     recarregarPedidos,
   } = useEstoque()
 
+  
   const [dialogAberto, setDialogAberto] = useState(false)
   const [pedidoSelecionado, setPedidoSelecionado] = useState<string | null>(null)
 
@@ -66,6 +69,7 @@ export function GestaoVendas() {
 
   const [novoPedido, setNovoPedido] = useState(initialNovoPedidoState)
   const [produtoSelecionadoId, setProdutoSelecionadoId] = useState("")
+  const [variacaoSelecionadaId, setVariacaoSelecionadaId] = useState(""); 
   const [quantidadeSelecionada, setQuantidadeSelecionada] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -78,55 +82,75 @@ export function GestaoVendas() {
     return produtosNoPedido.reduce((acc, p) => acc + p.totalPrice, 0)
   }
 
+  const produtoSelecionado = produtosDoEstoque.find(p => p.id === produtoSelecionadoId);
+
   const adicionarProdutoAoPedido = () => {
-    const produtoBase = produtosDoEstoque.find((p) => p.id === produtoSelecionadoId)
-    if (produtoBase && quantidadeSelecionada > 0) {
-      if (quantidadeSelecionada > produtoBase.quantidade) {
-        toast.error(`Quantidade indisponível! Só há ${produtoBase.quantidade} em estoque.`)
-        return
-      }
-
-      const setupFeeParaEsteItem = (produtoBase as any).setupFee || 0 // Assumindo que o produto do estoque pode ter uma setupFee
-
-      const produtoExistenteIndex = novoPedido.produtos.findIndex((p) => p.id === produtoBase.id)
-
-      let produtosAtualizados: NovoPedidoProduto[]
-
-      if (produtoExistenteIndex > -1) {
-        produtosAtualizados = novoPedido.produtos.map((p, index) => {
-          if (index === produtoExistenteIndex) {
-            const novaQuantidade = p.quantity + quantidadeSelecionada
-            return {
-              ...p,
-              quantity: novaQuantidade,
-              totalPrice: calcularTotalItem(p.unitPrice, novaQuantidade, p.setupFee),
-            }
-          }
-          return p
-        })
-      } else {
-        const novoItem: NovoPedidoProduto = {
-          id: produtoBase.id,
-          name: produtoBase.nome,
-          quantity: quantidadeSelecionada,
-          unitPrice: produtoBase.preco,
-          setupFee: setupFeeParaEsteItem,
-          totalPrice: calcularTotalItem(produtoBase.preco, quantidadeSelecionada, setupFeeParaEsteItem),
-          logotype: "text", // Padrão, já que não há UI para isso no admin
-        }
-        produtosAtualizados = [...novoPedido.produtos, novoItem]
-      }
-
-      setNovoPedido((prev) => ({
-        ...prev,
-        produtos: produtosAtualizados,
-        total: calcularTotalPedido(produtosAtualizados),
-      }))
-
-      setProdutoSelecionadoId("")
-      setQuantidadeSelecionada(1)
+    // 🎨 ALTERADO: A lógica agora precisa da variação
+    if (!produtoSelecionado || !variacaoSelecionadaId || quantidadeSelecionada <= 0) {
+      toast.error("Selecione um produto, uma cor e uma quantidade válida.");
+      return;
     }
-  }
+    
+    const variacao = produtoSelecionado.variations.find(v => v.id === variacaoSelecionadaId);
+
+    if (!variacao) {
+      toast.error("Variação de cor não encontrada.");
+      return;
+    }
+
+    if (quantidadeSelecionada > variacao.quantidade) {
+      toast.error(`Quantidade indisponível! A cor "${variacao.cor}" tem apenas ${variacao.quantidade} em estoque.`);
+      return;
+    }
+
+    const setupFeeParaEsteItem = (produtoSelecionado as any).setupFee || 0;
+    const precoUnitario = produtoSelecionado.preco;
+
+    const produtoExistenteIndex = novoPedido.produtos.findIndex(p => p.variationId === variacao.id);
+
+    let produtosAtualizados: NovoPedidoProduto[];
+
+    if (produtoExistenteIndex > -1) {
+      // Atualiza a quantidade do item existente
+      produtosAtualizados = novoPedido.produtos.map((p, index) => {
+        if (index === produtoExistenteIndex) {
+          const novaQuantidade = p.quantity + quantidadeSelecionada;
+          return {
+            ...p,
+            quantity: novaQuantidade,
+            totalPrice: calcularTotalItem(p.unitPrice, novaQuantidade, p.setupFee),
+          };
+        }
+        return p;
+      });
+    } else {
+      // Adiciona novo item
+      const novoItem: NovoPedidoProduto = {
+        id: produtoSelecionado.id,
+        variationId: variacao.id,
+        name: produtoSelecionado.nome,
+        color: variacao.cor,
+        quantity: quantidadeSelecionada,
+        unitPrice: precoUnitario,
+        setupFee: setupFeeParaEsteItem,
+        totalPrice: calcularTotalItem(precoUnitario, quantidadeSelecionada, setupFeeParaEsteItem),
+        logotype: "text",
+      };
+      produtosAtualizados = [...novoPedido.produtos, novoItem];
+    }
+    
+    setNovoPedido(prev => ({
+      ...prev,
+      produtos: produtosAtualizados,
+      total: calcularTotalPedido(produtosAtualizados),
+    }));
+
+    // Resetar seletores
+    setProdutoSelecionadoId("");
+    setVariacaoSelecionadaId("");
+    setQuantidadeSelecionada(1);
+  };
+  
 
   const removerProdutoDoPedido = (produtoId: string) => {
     const produtosFiltrados = novoPedido.produtos.filter((p) => p.id !== produtoId)
@@ -379,6 +403,22 @@ export function GestaoVendas() {
                             {produto.nome} - R$ {produto.preco.toFixed(2)} ({produto.quantidade} disp.)
                           </SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                    <Select 
+                    value={variacaoSelecionadaId} 
+                    onValueChange={setVariacaoSelecionadaId}
+                    disabled={!produtoSelecionado} // Desabilitado até que um produto seja escolhido
+                    >
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Selecione uma cor" />
+                            </SelectTrigger>
+                            <SelectContent>
+                            {produtoSelecionado?.variations.map((variacao) => (
+                            <SelectItem key={variacao.id} value={variacao.id} disabled={variacao.quantidade <= 0}>
+                          {variacao.cor} ({variacao.quantidade} disp.)
+                          </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                     <Input

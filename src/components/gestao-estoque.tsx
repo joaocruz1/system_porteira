@@ -493,7 +493,7 @@ export function GestaoEstoque() {
                           </div>
                           <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
                             <span>Fornecedor: {produto.fornecedor}</span>
-                            <span>Preço: R$ {(produto.basePrice || 0).toFixed(2)}</span>
+                            <span>Preço: R$ {parseFloat(produto.preco).toFixed(2)}</span>
                             <span>Total: {totalQuantity} unidades</span>
                             <span>Valor: R$ {(getTotalValue(produto) || 0).toFixed(2)}</span>
                           </div>

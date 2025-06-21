@@ -63,11 +63,20 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
   }
 
   const verificarDisponibilidadeEstoque = () => {
+    if (!pedido || !pedido.produtos) return false;
+
     return pedido.produtos.every((item) => {
-      const produtoEstoque = produtos.find((p) => p.id === item.produtoId)
-      return produtoEstoque && produtoEstoque.quantidade >= item.quantidade
-    })
-  }
+      const produtoEstoque = produtos.find((p) => p.id === item.produtoId);
+      if (!produtoEstoque) return false;
+
+      if (item.variationId) {
+        const variacaoEstoque = produtoEstoque.variations.find(v => v.id === item.variationId);
+        return variacaoEstoque && variacaoEstoque.quantidade >= item.quantidade;
+      }
+
+      return produtoEstoque.quantidade >= item.quantidade;
+    });
+  };
 
   const estoqueDisponivel = verificarDisponibilidadeEstoque()
 
@@ -159,7 +168,6 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
         </div>
       </div>
       
-      {/* Bloco da Imagem Restaurado */}
       {pedido.logo && (
         <Card>
           <CardHeader>
@@ -272,7 +280,12 @@ export function DetalhesPedido({ pedidoId, onVoltar }: DetalhesPedidoProps) {
                 <TableBody>
                 {pedido.produtos.map((item, index) => (
                     <TableRow key={index}>
-                        <TableCell><p className="font-medium">{item.nome}</p></TableCell>
+                        <TableCell>
+                            <p className="font-medium">{item.nome}</p>
+                            {item.cor && (
+                                <p className="text-sm text-muted-foreground">Cor: {item.cor}</p>
+                            )}
+                        </TableCell>
                         <TableCell>R$ {item.preco.toFixed(2)}</TableCell>
                         <TableCell><Badge variant="outline">{item.quantidade}x</Badge></TableCell>
                         <TableCell className="text-right font-semibold">R$ {(item.quantidade * item.preco).toFixed(2)}</TableCell>

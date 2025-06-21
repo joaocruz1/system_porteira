@@ -398,7 +398,7 @@ export function EstoqueProvider({
       const response = await fetch(apiUrl, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity: quantidade }),
+        body: JSON.stringify({ quantidade: quantidade }),
       })
       if (!response.ok) {
         let errorMessage = `Erro HTTP: ${response.status} ${response.statusText}`
